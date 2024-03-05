@@ -1,0 +1,4764 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Holder Wallet API",
+    "version": "4.0.0",
+    "license": {
+      "name": "Apache 2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0"
+    },
+    "contact": {},
+    "description": "The Holder Wallet API (the service) provides an interface for managing (personal) digital wallets inside an SVX tenant environment. It facilitates a range of operations including key management, DID management, and credential issuance (receiving) and credential presentation (presenting). The goal is to provide flexibility on how the component is integrated, be it with a mobile or web application, or with a third party service.\n\nAll cryptographic keys are managed by the service (often referred to as custodial key management) in a secure manner and can be used to control identifers (i.e. DIDs), as well as perform key binding in credentials.\n\nThe service facilitates receiving and presenting credentials in accordance to leading standards and specifications in the space. The main focus is on the family of OpenID4VC standards, JWT based credential formats and (optionally) DIDs.\n\nOne instance of the service is able to manage multiple wallets, each of which is a collection of keys, DIDs and associated credentials. This service operates in a trusted environment where its client applications are expected to be trusted as well.\n\n## Wallet Management\n\nIt is possible to identify a wallet using an external identifier that matches the client application's user identifier. When providing an external identifier to the create wallet operation, it first searches if an existing wallet exists and returns a reference instead of creating a new instance.\n\n## Key Management\n\nKeys to perform various cryptographic operations are managed within the service and private keys never leave the service.\n\nThe following operations are supported:\n\n- Create a new key\n- Delete an existing key\n- Get a key\n- Import an existing key\n- Sign\n- Sign JWT\n- Encrypt JWE\n- Decrypt JWE\n\nThe service supports the following algorithms as defined in RFC7518:\n\n- ES256\n\nKeys are stored currently stored in a DB (e.g. Postgres). We plan to add integration with HSM services in the future.\n\n## DID Management\n\nEach wallet is able to manage one or more DIDs. The supported DID methods can be found [here](https://docs.meeco.me/guides/api-guides/dids/did-methods). A DID is typically used as a key binding mechanism in a verifiable credential. The key binding takes place in the issuance process and proof is provided during the presentation process.\n\n## Credential Management\n\nThe wallet supports the following credential life cycle operations:\n\n- Receive a credential\n- Present a credential\n- Import an existing credential\n\nReceiving a credential from an issuer typically involves key binding, which is a process where the service provides a public key or DID to the issuer alongside proof that is controls the key material. When this is completed, the credential, signed by the issuer, is stored in the wallet with a reference to the `kid`.\nPresenting a credential to a verifier involves sending the credential, alongside proof of the key binding, to the verifier.\n\nNote that not all credential formats are supported. Please refer to the section on Supported Standards for more information on the different formats that are currently supported.\n\n## SVX Integration\n\nThe service is integrated with SVX Platform, which provides a range of services, including:\n\n- DID operations (create, get)\n- Credential operations (verify)\n- Secure data storage (store credentials)\n\nAll wallets belong to one tenant and receive a DID from the SVX Platform where they are registered as end-users. The DID is used to identify the wallet in the SVX Platform.\n\nEvery wallet instance uses its registered DID to authenticate with the SVX Platform. This enables the service to perform operations and store data for each user in its own context. For performance reasons, access tokens are cached for a limited amount of time (this can be configured).\n\n## Supported Standards and Specifications\n\nThe Wallet provides support for a variety of specifications and standards with the aim of achieving interoperablity with the wider ecosystem. What follows is a list of the supported specifications and standards grouped per logical domain.\n\n**Cryptographic Keys**\n\n- `JWK`: [RFC7517](https://datatracker.ietf.org/doc/html/rfc7517)\n- `JWA`: [RFC7518](https://datatracker.ietf.org/doc/html/rfc7518)\n- `JWE`: [RFC7516](https://datatracker.ietf.org/doc/html/rfc7516)\n- `JOSE`: [JOSE IANA registry](https://www.iana.org/assignments/jose/jose.xhtml)\n\n**Credential formats**:\n\n- `jwt_vc_json`: [W3C Verifiable Credentials](https://www.w3.org/TR/vc-data-model/)\n- `vc+sd-jwt`: [IETF SD-JWT VC](https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/)\n\n**Key Discovery**\n\n- `/.well-known/jwt-vc-issuer` (IETF SD-JWT VC)\n\n**Credential issuance**:\n\n- OpenID 4 Verifiable Credential Issuance (draft 13) [(WG Draft)](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html) [(Editors Draft)](https://openid.github.io/OpenID4VCI/openid-4-verifiable-credential-issuance-wg-draft.html)\n  - Pre-Authorized Code flow\n  - Authorization Code flow\n- [RFC9126 Pushed Authorization Request](https://www.rfc-editor.org/info/rfc9126)\n\n**Credential Presentation**\n\n- OpenID 4 Verifiable Presentation [(WG Draft)](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html)\n\n## Authentication and Authorization\n\nThe service doesn't provide authentication or authorization out-of-the-box. It is up to the client to provide this and the service as such is expected to run inside a secure environment and not directly exposed to the outside world.\n\nA few examples of how the service can be deployed are:\n\n- Behind an API gateway (e.g. AWS API Gateway, Azure API Management, Krakend)\n- Behind a Backend For Frontend service facing the outside world\n\n## Deployment\n\nThe service can be deployed on-premises or in a cloud environment. It relies on following services:\n\n- Postgres (application database; keys, dids, credential metadata)\n- SVX API\n- Redis (access tokens)\n"
+  },
+  "tags": [],
+  "servers": [
+    {
+      "url": "https://holder-wallet-dev.svx.internal",
+      "description": "Holder wallet dev deployment available only by using internal network."
+    }
+  ],
+  "security": [
+    {},
+    {
+      "bearerAuth": []
+    },
+    {
+      "mutualTLS": []
+    }
+  ],
+  "paths": {
+    "/version": {
+      "get": {
+        "description": "Endpoint to read deployed service version information.",
+        "operationId": "AppController_getVersion",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Get deployed service version information",
+        "tags": [
+          "Monitoring"
+        ]
+      }
+    },
+    "/system/status": {
+      "get": {
+        "description": "Endpoint to read deployed service status information.",
+        "operationId": "AppController_getSystemStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Get deployed service status information",
+        "tags": [
+          "Monitoring"
+        ]
+      }
+    },
+    "/system/metrics/wallets": {
+      "get": {
+        "operationId": "SystemMetricsController_getWalletCounts",
+        "parameters": [
+          {
+            "description": "Counts only wallets created after the given date",
+            "in": "query",
+            "name": "start_date",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Counts only wallets created before the given date",
+            "in": "query",
+            "name": "end_date",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletCountsResponseDto"
+                }
+              }
+            },
+            "description": "Metrics successfully fetched"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalid_date_filter_value": {
+                    "value": {
+                      "error": "invalid_date_filter_value",
+                      "extra_info": {},
+                      "message": "Invalid date filter value."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidDateFilterValueError"
+                }
+              }
+            },
+            "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "internal_server_error": {
+                    "value": {
+                      "error": "internal_server_error",
+                      "extra_info": {},
+                      "message": "Internal server error."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Wallet metrics",
+        "tags": [
+          "System Metrics"
+        ]
+      }
+    },
+    "/wallets": {
+      "post": {
+        "description": "Register a new Wallet. Optionally use `external_reference`. When a Wallet exists with the given `external_reference`, the existing Wallet information is returned making the operation idempotent.\nIf `external_reference` is not used a new Wallet is always created.\n\nBased on the configuration of the component, a Wallet has a default key and DID assigned to it. This key and DID are used to register and authenticate the Wallet with the SVX API.\n",
+        "operationId": "WalletsController_create",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWalletPayloadDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletResponseDto"
+                }
+              }
+            },
+            "description": "Existing Wallet successfully loaded"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletResponseDto"
+                }
+              }
+            },
+            "description": "New Wallet successfuly registered"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalid_request_payload": {
+                    "value": {
+                      "error": "invalid_request_payload",
+                      "extra_info": {},
+                      "message": "Invalid request payload. Check \"extra_info.details\" for more details."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestPayloadError"
+                }
+              }
+            },
+            "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "internal_server_error": {
+                    "value": {
+                      "error": "internal_server_error",
+                      "extra_info": {},
+                      "message": "Internal server error."
+                    }
+                  },
+                  "register_wallet_error": {
+                    "value": {
+                      "error": "register_wallet_error",
+                      "extra_info": {},
+                      "message": "Error occurred while registering a Wallet."
+                    }
+                  }
+                },
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/RegisterWalletError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InternalServerError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Register or find a Wallet",
+        "tags": [
+          "Wallet"
+        ]
+      }
+    },
+    "/wallets/{walletId}": {
+      "delete": {
+        "description": "Deleted Wallet by ID. All information stored inside the Wallet will be deleted as well.",
+        "operationId": "WalletsController_deleteOne",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Wallet successfuly removed"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalid_path_param": {
+                    "value": {
+                      "error": "invalid_path_param",
+                      "extra_info": {},
+                      "message": "Invalid path parameter(s). Check \"extra_info.details\" for more details."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidPathParamError"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "wallet_not_found": {
+                    "value": {
+                      "error": "wallet_not_found",
+                      "extra_info": {},
+                      "message": "Wallet was not found."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/WalletNotFoundError"
+                }
+              }
+            },
+            "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "delete_wallet_error": {
+                    "value": {
+                      "error": "delete_wallet_error",
+                      "extra_info": {},
+                      "message": "Error occurred while deleting a Wallet."
+                    }
+                  },
+                  "internal_server_error": {
+                    "value": {
+                      "error": "internal_server_error",
+                      "extra_info": {},
+                      "message": "Internal server error."
+                    }
+                  }
+                },
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/DeleteWalletError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InternalServerError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Delete Wallet by ID",
+        "tags": [
+          "Wallet"
+        ]
+      },
+      "get": {
+        "description": "Fetch Wallet information by ID.",
+        "operationId": "WalletsController_getOne",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletResponseDto"
+                }
+              }
+            },
+            "description": "Wallet information successfully loaded"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalid_path_param": {
+                    "value": {
+                      "error": "invalid_path_param",
+                      "extra_info": {},
+                      "message": "Invalid path parameter(s). Check \"extra_info.details\" for more details."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidPathParamError"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "wallet_not_found": {
+                    "value": {
+                      "error": "wallet_not_found",
+                      "extra_info": {},
+                      "message": "Wallet was not found."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/WalletNotFoundError"
+                }
+              }
+            },
+            "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "internal_server_error": {
+                    "value": {
+                      "error": "internal_server_error",
+                      "extra_info": {},
+                      "message": "Internal server error."
+                    }
+                  },
+                  "load_wallet_error": {
+                    "value": {
+                      "error": "load_wallet_error",
+                      "extra_info": {},
+                      "message": "Error occurred while loading Wallet information."
+                    }
+                  }
+                },
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/LoadWalletError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InternalServerError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Get Wallet by ID",
+        "tags": [
+          "Wallet"
+        ]
+      }
+    },
+    "/wallets/{walletId}/keys": {
+      "post": {
+        "description": "Create a new cryptographic key associated with the Wallet. Keys are created using the JOSE JWK standard using attribute strings listed in the [JOSE IANA registry](https://www.iana.org/assignments/jose/jose.xhtml).\n\nDepending on the configuration of the service only certain cryptographic keys are supported.\n",
+        "operationId": "KeysController_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "key": {
+                    "properties": {
+                      "crv": {
+                        "type": "string"
+                      },
+                      "kty": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kty",
+                      "crv"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "key": {
+                      "$ref": "#/components/schemas/JSONWebKeyPub"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "New key successfully created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalid_request_payload": {
+                    "value": {
+                      "error": "invalid_request_payload",
+                      "extra_info": {},
+                      "message": "Invalid request payload. Check \"extra_info.details\" for more details."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestPayloadError"
+                }
+              }
+            },
+            "description": "Key could not be created"
+          }
+        },
+        "summary": "Create a key for a Wallet",
+        "tags": [
+          "Key Management"
+        ]
+      }
+    },
+    "/wallets/{walletId}/keys/{keyId}": {
+      "delete": {
+        "description": "",
+        "operationId": "KeysController_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "keyId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Key successfully removed"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalid_path_param": {
+                    "value": {
+                      "error": "invalid_path_param",
+                      "extra_info": {},
+                      "message": "Invalid path parameter(s). Check \"extra_info.details\" for more details."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidPathParamError"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "wallet_not_found": {
+                    "value": {
+                      "error": "wallet_not_found",
+                      "extra_info": {},
+                      "message": "Wallet was not found."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/WalletNotFoundError"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Delete a key from a Wallet",
+        "tags": [
+          "Key Management"
+        ]
+      },
+      "get": {
+        "description": "Return the cryptographic key information for a key associated with a Wallet.\n\nThe information returned contains only header and public attributes of the key, i.e. not the private key information which is kept in the Wallet. Key information is returned in the JOSE JWK standard using attribute strings listed in the [JOSE IANA registry](https://www.iana.org/assignments/jose/jose.xhtml).\n",
+        "operationId": "KeysController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "keyId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "key": {
+                      "$ref": "#/components/schemas/JSONWebKeyPub"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Key successfully loaded"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "key_not_found": {
+                    "value": {
+                      "error": "key_not_found",
+                      "extra_info": {},
+                      "message": "Key was not found."
+                    }
+                  },
+                  "wallet_not_found": {
+                    "value": {
+                      "error": "wallet_not_found",
+                      "extra_info": {},
+                      "message": "Wallet was not found."
+                    }
+                  }
+                },
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/WalletNotFoundError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/KeyNotFoundError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Not found"
+          }
+        },
+        "summary": "Get a key for a Wallet",
+        "tags": [
+          "Key Management"
+        ]
+      }
+    },
+    "/wallets/{walletId}/keys/import": {
+      "post": {
+        "description": "Import an existing cryptographic key to a Wallet using the JOSE JWK notation.\n\nDepending on the configuration of the service only certain cryptographic keys are supported.\n",
+        "operationId": "KeyController_Import",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "key": {
+                    "$ref": "#/components/schemas/JSONWebKey"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "key": {
+                      "$ref": "#/components/schemas/JSONWebKeyPub"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Key has been imported"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalid_request_payload": {
+                    "value": {
+                      "error": "invalid_request_payload",
+                      "extra_info": {},
+                      "message": "Invalid request payload. Check \"extra_info.details\" for more details."
+                    }
+                  },
+                  "key_not_supported": {
+                    "value": {
+                      "error": "key_not_supported",
+                      "extra_info": {},
+                      "message": "Invalid request payload. Check \"extra_info.details\" for more details."
+                    }
+                  }
+                },
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/KeyNotSupportedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestPayloadError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Key could not be imported"
+          }
+        },
+        "summary": "Import a key to a Wallet",
+        "tags": [
+          "Key Management"
+        ]
+      }
+    },
+    "/wallets/{walletId}/keys/{keyId}/sign": {
+      "post": {
+        "description": "Create a signature based on data provided using a cryptographic key associated with a Wallet.\n",
+        "operationId": "KeyController_sign",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "keyId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "data": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "signature": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Key has been created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalid_request_payload": {
+                    "value": {
+                      "error": "invalid_request_payload",
+                      "extra_info": {},
+                      "message": "Invalid request payload. Check \"extra_info.details\" for more details."
+                    }
+                  },
+                  "key_signing_not_supported": {
+                    "value": {
+                      "error": "key_signing_not_supported",
+                      "extra_info": {},
+                      "message": "The signing operation is not supported for the key. Check \"extra_info.details\" for more details."
+                    }
+                  }
+                },
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestPayloadError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/KeySigningNotSupportedError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Data could not be signed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "key_not_found": {
+                    "value": {
+                      "error": "key_not_found",
+                      "extra_info": {},
+                      "message": "Key was not found."
+                    }
+                  },
+                  "wallet_not_found": {
+                    "value": {
+                      "error": "wallet_not_found",
+                      "extra_info": {},
+                      "message": "Wallet was not found."
+                    }
+                  }
+                },
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/WalletNotFoundError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/KeyNotFoundError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Not found"
+          }
+        },
+        "summary": "Sign data with a key from a wallet",
+        "tags": [
+          "Key Management"
+        ]
+      }
+    },
+    "/wallets/{walletId}/dids": {
+      "post": {
+        "description": "",
+        "operationId": "DidController_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "method": {
+                    "type": "string"
+                  },
+                  "options": {
+                    "properties": {
+                      "codec": {
+                        "type": "string"
+                      },
+                      "key": {
+                        "properties": {
+                          "crv": {
+                            "type": "string"
+                          },
+                          "kty": {
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "network": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "did": {
+                      "$ref": "#/components/schemas/WalletDIDDto"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "DID has been created"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "wallet_not_found": {
+                    "value": {
+                      "error": "wallet_not_found",
+                      "extra_info": {},
+                      "message": "Wallet was not found."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/WalletNotFoundError"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Create a DID for a Wallet",
+        "tags": [
+          "DID Management"
+        ]
+      }
+    },
+    "/wallets/{walletId}/dids/{id}": {
+      "delete": {
+        "description": "",
+        "operationId": "DidController_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "DID has been successfully deleted"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "wallet_not_found": {
+                    "value": {
+                      "error": "wallet_not_found",
+                      "extra_info": {},
+                      "message": "Wallet was not found."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/WalletNotFoundError"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Delete a DID from a Wallet",
+        "tags": [
+          "DID Management"
+        ]
+      }
+    },
+    "/wallets/{walletId}/receive": {
+      "get": {
+        "description": "",
+        "operationId": "ReceiveController_findAll",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "order",
+            "required": false,
+            "in": "query",
+            "description": "Issuance state response order. Default ordering: `DESC` (Supported: `ASC`, `DESC`)",
+            "example": "DESC",
+            "schema": {
+              "enum": [
+                "ASC",
+                "DESC"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "order_by",
+            "required": false,
+            "in": "query",
+            "description": "Order Issuance state by an attribute, defaults to: `created_at` (Supported: `created_at`)",
+            "example": "created_at",
+            "schema": {
+              "enum": [
+                "created_at"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "per_page",
+            "required": false,
+            "in": "query",
+            "description": "Number of records per page",
+            "example": 10,
+            "schema": {}
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Page number (starting from 1)",
+            "example": 1,
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialReceiveStatesModelDto"
+                }
+              }
+            },
+            "description": "Credential receive states successfully loaded"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalid_order_filter_value": {
+                    "value": {
+                      "error": "invalid_order_filter_value",
+                      "extra_info": {},
+                      "message": "order filter value is invalid. Supported values: asc,desc."
+                    }
+                  },
+                  "invalid_path_param": {
+                    "value": {
+                      "error": "invalid_path_param",
+                      "extra_info": {},
+                      "message": "Invalid path parameter(s). Check \"extra_info.details\" for more details."
+                    }
+                  },
+                  "invalid_per_page_filter_value": {
+                    "value": {
+                      "error": "invalid_per_page_filter_value",
+                      "extra_info": {},
+                      "message": "per_page filter value is invalid. Must be a number between 1 and 50."
+                    }
+                  }
+                },
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidPathParamError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InvalidOrderFilterValueError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InvalidPerPageFilterValueError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "wallet_not_found": {
+                    "value": {
+                      "error": "wallet_not_found",
+                      "extra_info": {},
+                      "message": "Wallet was not found."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/WalletNotFoundError"
+                }
+              }
+            },
+            "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "internal_server_error": {
+                    "value": {
+                      "error": "internal_server_error",
+                      "extra_info": {},
+                      "message": "Internal server error."
+                    }
+                  },
+                  "load_credentials_error": {
+                    "value": {
+                      "error": "load_credentials_error",
+                      "extra_info": {},
+                      "message": "Error occurred while loading Wallet credentials."
+                    }
+                  }
+                },
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/LoadCredentialsError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InternalServerError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Get credential receive states",
+        "tags": [
+          "Verifiable Credential Issuance"
+        ]
+      },
+      "post": {
+        "description": "Credential offer is a JSON encoded object that the issuer uses to pass information to the wallet and initiate the issuance process.\nThis endpoint is used to validate, parse and extract the necessary information, leading to the next step in the process, getting an access token.\n\nFor more information on the structure of the credential offer object, see section 4.1 in OpenID4VCI.\n\nThe three supported methods for registering a credential offer are:\n- `credential_offer`: Pass the JSON object by value\n- `credential_offer_uri`: Pass the JSON object by reference. The service performs a GET request to retrieve the object.\n- `credential_offer_endpoint` - Credential Offer sent by the issuer to the wallet credential offer endpoint. It contains a single URI query parameter, either credential_offer or credential_offer_uri\n\nNote that the options above are mutually exclusive.\n\nAfter successfully registering the credential offer, a state is returned. This state is used as an identifier to link subsequent calls to receive endpoints.\n\n### Next Step\n\nTo continue the issuance process, call:\n\n```POST /wallets/{walletId}/receive/get_access_token```\n",
+        "operationId": "ReceiveController_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CredentialReceiveRequestModelDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialReceiveResponseModelDto"
+                }
+              }
+            },
+            "description": "Successful registration of the credential offer."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidCredentialOfferUrlError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Bad Request - The request was invalid or cannot be otherwise served."
+          }
+        },
+        "summary": "Register credential offer",
+        "tags": [
+          "Verifiable Credential Issuance"
+        ]
+      }
+    },
+    "/wallets/{walletId}/receive/get_access_token": {
+      "post": {
+        "description": "The get access token endpoint ensures the wallet is able to retrieve a valid access token to go to the next step of actually getting the credential(s).\n\nTwo flows that are supported are:\n- Pre-Authorized Code Flow\n- Authorization Code Flow\n\n### Authorization Code Flow\n\nUses the `authorization_code` as defined in RFC6749 to issue access tokens.\n\nThis is usually a two-step process, that involves authentication on the front channel (through a browser window) to be performed by the client.\n\nIn step 1, a call to this endpoint returns the `authorization_url`. This URL is what needs to be opened in a browser window and will authenticate the end-user to the service.\nThis includes a redirect_uri responsible for receiving and storing the `authorization_code`.\n\nIn step 2, the service, exchanges the code for an access token by calling the Token Endpoint.\n\nNote that at this point, the wallet initiated Authorization Code flow is not supported.\n\n### Pre-Authorized Code Flow\n\nThis flow is used when the issuer has already authenticated and authorized the end-user.\nThe issuer provides a Pre-Authorized Code in the credential offer which is used to exchange it for an access token in the Token Endpoint.\nThe Authorization Endpoint is not used in this flow.\n\nFor more information, see section 3.5 in OpenID4VCI.\n\n### Next Step\n\nTo continue the issuance process, call:\n\n```POST /wallets/{walletId}/receive/get_credential```\n",
+        "operationId": "ReceiveController_getAccessToken",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CredentialReceiveGetAccessTokenRequestModelDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialReceiveGetAccessTokenResponseModelDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "wallet_not_found": {
+                    "value": {
+                      "error": "wallet_not_found",
+                      "extra_info": {},
+                      "message": "Wallet was not found."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/WalletNotFoundError"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Get access token",
+        "tags": [
+          "Verifiable Credential Issuance"
+        ]
+      }
+    },
+    "/wallets/{walletId}/receive/get_credential": {
+      "post": {
+        "description": "Get credential from the issuer and perform key binding. A valid access token is required in order to call this endpoint.\n\nSee section 7 in OpenID4VCI for more information.\n\n### Key Binding\n\nKey binding is performed by providing either\n\n- `kid`: Public key is presented.\n- `did`: DID is presented referencing one of the keys contained in the `verificationMethod` section of the DID document.\n\nBoth methods involve the wallet presenting key proof to the issuer to ensure control over cryptographic key material.\n\nSee section 7.2.1 in OpenID4VCI for more information.\n\n### Requesting Multiple Credentials in Sequence\n\nThe `c_nonce` and `c_nonce_expires_in` returned by the issuer allow requesting the same credential, but binding it to different key material.\nThe service automatically manages these attributes, ensuring the correct `c_nonce` is used, allowing multiple credentials to be retrieved, but with different keys.\n\n### Not Supported Options\n\nNote that the following are not supported by the endpoint\n\n- `transaction_id`: Part of the deferred issuance flow, allows receiving a credential by referencing a `transaction_id`\n- Receiving encrypted credentials\n",
+        "operationId": "ReceiveController_getCredential",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CredentialReceiveGetCredentialRequestModelDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialReceiveGetCredentialResponseModelDto"
+                }
+              }
+            },
+            "description": "New credential successfully added to the Wallet"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "wallet_not_found": {
+                    "value": {
+                      "error": "wallet_not_found",
+                      "extra_info": {},
+                      "message": "Wallet was not found."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/WalletNotFoundError"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Get verifiable credential",
+        "tags": [
+          "Verifiable Credential Issuance"
+        ]
+      }
+    },
+    "/wallets/{walletId}/receive/{state}": {
+      "get": {
+        "description": "Get the current state of a receive credential flow.\n",
+        "operationId": "ReceiveController_findOne",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "state",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialReceiveStateModelDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "wallet_not_found": {
+                    "value": {
+                      "error": "wallet_not_found",
+                      "extra_info": {},
+                      "message": "Wallet was not found."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/WalletNotFoundError"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Get receive credential state",
+        "tags": [
+          "Verifiable Credential Issuance"
+        ]
+      }
+    },
+    "/wallets/receive/callback": {
+      "get": {
+        "description": "`authorization_code` redirect uri that was started via `/receive` endpoint.<br/>\n`state` and `code` come as a query parameters.<br/>\n`code` is exchanged for the `access_token` so client can call `POST /wallets/{walletId}/receive/get_credential` endpoint right away.\n",
+        "operationId": "ReceiveController_callback",
+        "responses": {
+          "302": {
+            "description": "Issuer response captured and processed - redirect back to the client Wallet"
+          }
+        },
+        "summary": "authorization_code flow Holder Wallet redirect uri ",
+        "tags": [
+          "Verifiable Credential Issuance"
+        ]
+      }
+    },
+    "/wallets/{walletId}/send": {
+      "get": {
+        "description": "",
+        "operationId": "PresentationController_findAll",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "order",
+            "required": false,
+            "in": "query",
+            "description": "Presentation States response order. Default ordering: `DESC` (Supported: `ASC`, `DESC`)",
+            "example": "DESC",
+            "schema": {
+              "enum": [
+                "ASC",
+                "DESC"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "order_by",
+            "required": false,
+            "in": "query",
+            "description": "Order Presentation States by an attribute, defaults to: `created_at` (Supported: `created_at`)",
+            "example": "created_at",
+            "schema": {
+              "enum": [
+                "created_at"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "per_page",
+            "required": false,
+            "in": "query",
+            "description": "Number of records per page",
+            "example": 10,
+            "schema": {}
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Page number (starting from 1)",
+            "example": 1,
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresentationStatesResponseDto"
+                }
+              }
+            },
+            "description": "Presentation states successfully loaded"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalid_order_filter_value": {
+                    "value": {
+                      "error": "invalid_order_filter_value",
+                      "extra_info": {},
+                      "message": "order filter value is invalid. Supported values: asc,desc."
+                    }
+                  },
+                  "invalid_path_param": {
+                    "value": {
+                      "error": "invalid_path_param",
+                      "extra_info": {},
+                      "message": "Invalid path parameter(s). Check \"extra_info.details\" for more details."
+                    }
+                  },
+                  "invalid_per_page_filter_value": {
+                    "value": {
+                      "error": "invalid_per_page_filter_value",
+                      "extra_info": {},
+                      "message": "per_page filter value is invalid. Must be a number between 1 and 50."
+                    }
+                  }
+                },
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidPathParamError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InvalidOrderFilterValueError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InvalidPerPageFilterValueError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "wallet_not_found": {
+                    "value": {
+                      "error": "wallet_not_found",
+                      "extra_info": {},
+                      "message": "Wallet was not found."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/WalletNotFoundError"
+                }
+              }
+            },
+            "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "internal_server_error": {
+                    "value": {
+                      "error": "internal_server_error",
+                      "extra_info": {},
+                      "message": "Internal server error."
+                    }
+                  },
+                  "load_credentials_error": {
+                    "value": {
+                      "error": "load_credentials_error",
+                      "extra_info": {},
+                      "message": "Error occurred while loading Wallet credentials."
+                    }
+                  }
+                },
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/LoadCredentialsError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InternalServerError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Get presentation states",
+        "tags": [
+          "Verifiable Presentation"
+        ]
+      },
+      "post": {
+        "description": "Parse the authorization request URI and get the following information.\n\n- `client_id`: The Client ID of the verifier.\n- `client_id_scheme`: The Client ID scheme of the verifier.\n- `client_metadata`: Verifier client metadata.\n- `nonce`: Nonce provided by the verifier to be returned in the response\n- `presentation_definition`: What credentials the verifier is requesting from the Wallet.\n- `redirect_uri`: The redirect URI of the verifier.\n- `response_mode`: How to return the response.\n- `response_type`: Which parameters to use to return the presentation to the verifier.\n- `response_uri`: Where to send the response.\n- `verifier_state`: State passed by the verifier to link request and response.\n- `meta.protocol_version`: Version of the protocol to be used. Supported values `draft10` and `draft18`. The default value is `draft10`.\n\nThis information informs the Wallet how to process the request and respond to the verifier.\n\n## Request Parameters\n\nThe following sections describe in more detail the parameters, their default values and behaviour.\n\n### client_id (required)\n\nDepending on the `client_id_scheme` the Client ID is either the `client_id`, the `redirect_uri` or the `did` of the verifier.\n\n### client_id_scheme\n\nThe mechanism to obtain and validate metadata of a verifier beyond that specified in RFC6749.\n\nCurrently supported values are:\n- `pre-registered` (default): The verifier is pre-registered with the SVX Platform.\n- `redirect_uri`: The redirect URI is the identifier of the verifier. Note that in this case the request MUST NOT be signed.\n- `did`: The DID is the identifier of the verifier. Note that in this case the request MUST be signed with a `verificationMethod` property in the DID document. This also requires that verifier metadata is passed using `client_metadata` or `client_metadata_uri`.\n\n### client_metadata (required)\n\nClient metadata, also called verifier metadata in this case can be implemented using static configuration values, as well as employ Dynamic Discovery.\n\nThe static configuration is usually bound to an existing profile, for example.\n\n- [JWT VC Presentation Profile](https://identity.foundation/jwt-vc-presentation-profile/)\n- [HAIP](https://openid.net/specs/openid4vc-high-assurance-interoperability-profile-sd-jwt-vc-1_0-00.html)\n\nThey use specific, custom URL schemes such as `openid-vc` or `haip`. When these are used, values referred to in these profiles should be used as client metadata.\n\nEach network can define their own set of static configuration values for client metadata.\n\nThe use of fedarations or trust schemes is not yet supported.\n\n### nonce\n\nNonce to be returned in the response to prevent replay attacks.\n\n### presentation_definition (required)\n\nExpresses which credentials a verifier asks a wallet to present. The syntax to do this should conform to DIF Presentation Exchange specification.\nThe structure of the definition is validated by a JSON schema associated with the `presentation_definition` schema in the OpenAPI definition.\n\nIt is also possible to use `presentation_definition_uri`. In this case the wallet performs a GET request to the `presentation_definition_uri` and parses the response.\nThe response is stored in the `presentation_definition` attribute.\n\nNote that the service does not necessarily support all options defined in the Presentation Exchange specification.\n\n### response_mode\n\nHow the response is sent to the verifier. Possible values are\n\n- `direct_post`: In this mode, the Authorization Response is sent to the Verifier using an HTTPS POST request to an endpoint controlled by the Verifier. The Authorization Response parameters are encoded in the body using the application/x-www-form-urlencoded content type.\n\nWhen using `direct_post`, note that the `redirect_uri` must be returned after successfully posting the Authorization Response to the `response_uri`.\n\nNote that `fragment` is currently not supported.\n\n### response_uri\n\nIf the `response_mode` is `direct_post` this is the URI to send the response to.\n\n### verifier_state\n\nOpaque state that can be used to link the request and response. Is returned as the `state` parameter in the Authorization Response.\n\n## Use of JAR (RFC9101)\n\nJAR (RFC9101) is a JWT representation of the request. The JWT is signed with the verifier's private key.\nThere are two ways to do this.\n\n- `request`: The `request` parameter is the JWT representation of the request.\n- `request_uri`: The `request_uri` parameter is the URL of the request.\n\nIn most cases `request_uri` is used instead of `request` as it is more convenient, especially in situations when a QR code is used to represent the authorization request.\n\nThe JAR contains the necessary information and is fetched, verified and subsequently parsed. See the previous section for more details.\n\n## Examples\n\nBelow are some examples of valid authorization requests and how they are parsed.\n\n```\nopenid-vc://?request_uri=https://example.com/oidc/presentations/requests/c63aa3e9-dc7d-4753-9ac8-30bf7add6e4c/jwt&client_id=https://example.com/cb\n```\n\nThis is an example where JAR is used. First, the `request_uri` is used to fetch the request JWT. The JWT is validated and then parsed. The parsed request is stored in the `metadata.request` attribute.\nAll the required information, except for the `client_id` is fetched from the JWT, validated and stored.\n",
+        "operationId": "PresentationController_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PresentationRequestSendRequestModelDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorizationRequestResponseDto"
+                }
+              }
+            },
+            "description": "Successful registration of the presentation authorization request."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidPresentationRequestUrlError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Bad Request - The request was invalid or cannot be otherwise served."
+          }
+        },
+        "summary": "Register authorization request",
+        "tags": [
+          "Verifiable Presentation"
+        ]
+      }
+    },
+    "/wallets/{walletId}/send/set_credentials": {
+      "post": {
+        "description": "Set the credentials to be presented as part of this presentation response.\n\nEach credential must be linked to an input descriptor from the credential definition.\nFor credentials that support selective disclosure, there is the possibility to use the `claims_to_disclose` property.\nUse object notation to specify which claims to disclose. For example:\n\n```\n\"claims_to_disclose\": [\"given_name\", \"address.street_address\", \"address.locality\", \"nationalities[0]\"]\n```\n\nIf a claim or a nested claim is not found in the credential or it doesn't support selective disclosure, it will be ignored.\n\nBy default, the key ID linked to the credential is used to sign the presentation. The `kid` property can be used to specify another key ID. If no key ID is linked to the credential and none is specified, no signature is added to the presentation.\n",
+        "operationId": "SendController_setCredentials",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PresentationRequestSetCredentialsRequestModelDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresentationRequestSetCredentialsResponseModelDto"
+                }
+              }
+            },
+            "description": "Successful registration of the credential offer."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "wallet_not_found": {
+                    "value": {
+                      "error": "wallet_not_found",
+                      "extra_info": {},
+                      "message": "Wallet was not found."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/WalletNotFoundError"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Set the credentials to be presented",
+        "tags": [
+          "Verifiable Presentation"
+        ]
+      }
+    },
+    "/wallets/{walletId}/send/submit": {
+      "post": {
+        "description": "Generate the presentation response to present the credentials to the verifier.\n\nBased on the `response_type`, the following parameters are included in the response:\n\nThe response always includes:\n- `vp_token`: A single JSON string or array of JSON strings representing the presentation.\n- `presentation_submission`: A JSON object containing the mapping between the requested credentials and where to find them in the returned VP token. This follows the DIF Presentation Exchange specification.\n\nOptionally, the following is also included:\n- `id_token`: A single JSON string that proves control of the wallet over key material.\n\nDepending on the `response_mode` option, the response can be sent to the verifier using an HTTPS POST request or an HTTP redirect.\n\nIn case of `response_mode=fragment` (default), the response is sent via the front channel by opening the `redirect_uri`, which is returned in the response to this request.\nThis `redirect_uri` includes all the response parameters. Note that this is currently not supported.\n\nIn case of `response_mode=direct_post` or `response_mode=post`, the response is submitted via an HTTPS POST request to the `response_uri`.\nIn this case, it is expected that a `redirect_uri` is returned in the response to this request.\nThis `redirect_uri` is also to be opened in the front channel, but is simply used to continue the verification process and not to transmit the response to the verifier.\n\nThe status of this submission can be tracked via the `meta.submission_status` attribute. Note that in case of `response_mode=fragment`, the status is always `success`.\n",
+        "operationId": "SendController_submit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PresentationRequestSubmitRequestModelDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresentationRequestSubmitResponseModelDto"
+                }
+              }
+            },
+            "description": "Successful submission of presentation response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "wallet_not_found": {
+                    "value": {
+                      "error": "wallet_not_found",
+                      "extra_info": {},
+                      "message": "Wallet was not found."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/WalletNotFoundError"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Submit the presentation response to the verifier",
+        "tags": [
+          "Verifiable Presentation"
+        ]
+      }
+    },
+    "/wallets/{walletId}/send/{state}": {
+      "get": {
+        "description": "",
+        "operationId": "SendController_findOne",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "state",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresentationStateResponseDto"
+                }
+              }
+            },
+            "description": "Successful registration of the credential offer."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "wallet_not_found": {
+                    "value": {
+                      "error": "wallet_not_found",
+                      "extra_info": {},
+                      "message": "Wallet was not found."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/WalletNotFoundError"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Get present credential state",
+        "tags": [
+          "Verifiable Presentation"
+        ]
+      }
+    },
+    "/wallets/{walletId}/credentials/import": {
+      "post": {
+        "description": "Import an existing credential from a known format into a Wallet.\n\nDepending on how key binding is performed, the import process associates the credential with the given `did` and/or `kid` if managed by the wallet:\n- `did`: The DID used for binding a DID to the credential.\n- `kid`: The key ID used for binding the key to the credential.\n\nIf the `did` or `kid` is not managed by the wallet, fields are ignored. They can later be updated with `PATCH /wallets/{walletId}/credentials/{credentialId}`.\n",
+        "operationId": "CredentialsController_import",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CredentialImportRequestModelDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialResponseModelDto"
+                }
+              }
+            },
+            "description": "Credential imported"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalid_credential": {
+                    "value": {
+                      "error": "invalid_credential_data",
+                      "extra_info": {},
+                      "message": "Could not import credential due to invalid credential data. Check \"extra_info.details\" for more details."
+                    }
+                  },
+                  "invalid_path_param": {
+                    "value": {
+                      "error": "invalid_path_param",
+                      "extra_info": {},
+                      "message": "Invalid path parameter(s). Check \"extra_info.details\" for more details."
+                    }
+                  }
+                },
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidPathParamError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InvalidCredentialDataError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "wallet_not_found": {
+                    "value": {
+                      "error": "wallet_not_found",
+                      "extra_info": {},
+                      "message": "Wallet was not found."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/WalletNotFoundError"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Import credential",
+        "tags": [
+          "Verifiable Credential"
+        ]
+      }
+    },
+    "/wallets/{walletId}/credentials": {
+      "get": {
+        "description": "Fetch a paginated list of credentials stored inside the Wallet.",
+        "operationId": "CredentialsController_findAll",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Next credentials page cursor filter",
+            "in": "query",
+            "name": "next_page_after",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Credentials per page filter",
+            "in": "query",
+            "name": "per_page",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Credential order by their creation date filter",
+            "example": "asc",
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter credentials by their format",
+            "example": "vc+sd-jwt",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "vc+sd-jwt",
+                "jwt_vc_json"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialsResponseDto"
+                }
+              }
+            },
+            "description": "Wallet credentials successfully loaded"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalid_order_filter_value": {
+                    "value": {
+                      "error": "invalid_order_filter_value",
+                      "extra_info": {},
+                      "message": "order filter value is invalid. Supported values: asc,desc."
+                    }
+                  },
+                  "invalid_path_param": {
+                    "value": {
+                      "error": "invalid_path_param",
+                      "extra_info": {},
+                      "message": "Invalid path parameter(s). Check \"extra_info.details\" for more details."
+                    }
+                  },
+                  "invalid_per_page_filter_value": {
+                    "value": {
+                      "error": "invalid_per_page_filter_value",
+                      "extra_info": {},
+                      "message": "per_page filter value is invalid. Must be a number between 1 and 50."
+                    }
+                  }
+                },
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidPathParamError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InvalidOrderFilterValueError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InvalidPerPageFilterValueError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "wallet_not_found": {
+                    "value": {
+                      "error": "wallet_not_found",
+                      "extra_info": {},
+                      "message": "Wallet was not found."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/WalletNotFoundError"
+                }
+              }
+            },
+            "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "internal_server_error": {
+                    "value": {
+                      "error": "internal_server_error",
+                      "extra_info": {},
+                      "message": "Internal server error."
+                    }
+                  },
+                  "load_credentials_error": {
+                    "value": {
+                      "error": "load_credentials_error",
+                      "extra_info": {},
+                      "message": "Error occurred while loading Wallet credentials."
+                    }
+                  }
+                },
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/LoadCredentialsError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InternalServerError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Get credentials",
+        "tags": [
+          "Verifiable Credential"
+        ]
+      }
+    },
+    "/wallets/{walletId}/credentials/{vcId}": {
+      "delete": {
+        "description": "Deletes credential by ID stored inside the Wallet",
+        "operationId": "CredentialsController_remove",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "vcId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Wallet credential by ID successfuly removed"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalid_path_param": {
+                    "value": {
+                      "error": "invalid_path_param",
+                      "extra_info": {},
+                      "message": "Invalid path parameter(s). Check \"extra_info.details\" for more details."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidPathParamError"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "credential_not_found": {
+                    "value": {
+                      "error": "credential_not_found",
+                      "extra_info": {},
+                      "message": "Credential was not found."
+                    }
+                  },
+                  "wallet_not_found": {
+                    "value": {
+                      "error": "wallet_not_found",
+                      "extra_info": {},
+                      "message": "Wallet was not found."
+                    }
+                  }
+                },
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/WalletNotFoundError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CredentialNotFoundError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "delete_credential_error": {
+                    "value": {
+                      "error": "delete_credential_error",
+                      "extra_info": {},
+                      "message": "Error occurred while deleting a Wallet credential."
+                    }
+                  },
+                  "internal_server_error": {
+                    "value": {
+                      "error": "internal_server_error",
+                      "extra_info": {},
+                      "message": "Internal server error."
+                    }
+                  }
+                },
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/DeleteCredentialError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InternalServerError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Delete credential by ID",
+        "tags": [
+          "Verifiable Credential"
+        ]
+      },
+      "get": {
+        "description": "Fetch credential information by ID stored inside the Wallet",
+        "operationId": "CredentialsController_findOne",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "vcId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialResponseDto"
+                }
+              }
+            },
+            "description": "Wallet credential by ID successfully loaded"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalid_path_param": {
+                    "value": {
+                      "error": "invalid_path_param",
+                      "extra_info": {},
+                      "message": "Invalid path parameter(s). Check \"extra_info.details\" for more details."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidPathParamError"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "credential_not_found": {
+                    "value": {
+                      "error": "credential_not_found",
+                      "extra_info": {},
+                      "message": "Credential was not found."
+                    }
+                  },
+                  "wallet_not_found": {
+                    "value": {
+                      "error": "wallet_not_found",
+                      "extra_info": {},
+                      "message": "Wallet was not found."
+                    }
+                  }
+                },
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/WalletNotFoundError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CredentialNotFoundError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "internal_server_error": {
+                    "value": {
+                      "error": "internal_server_error",
+                      "extra_info": {},
+                      "message": "Internal server error."
+                    }
+                  },
+                  "load_credential_error": {
+                    "value": {
+                      "error": "load_credential_error",
+                      "extra_info": {},
+                      "message": "Error occurred while loading a Wallet credential."
+                    }
+                  }
+                },
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/LoadCredentialError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InternalServerError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Get credential by ID",
+        "tags": [
+          "Verifiable Credential"
+        ]
+      },
+      "patch": {
+        "description": "Patches credential stored inside a Wallet.\n\nUsed to update `did` and `kid` fields in the meta data of the credential. Note that the `did` and `kid` need to reference an existing DID and Key Id.\n",
+        "operationId": "CredentialsController_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "vcId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CredentialPatchRequestModelDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialResponseDto"
+                }
+              }
+            },
+            "description": "Wallet credential successfully patched"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "credential_not_found": {
+                    "value": {
+                      "error": "credential_not_found",
+                      "extra_info": {},
+                      "message": "Credential was not found."
+                    }
+                  },
+                  "did_not_found": {
+                    "value": {
+                      "error": "did_not_found",
+                      "extra_info": {},
+                      "message": "DID was not found."
+                    }
+                  },
+                  "key_not_found": {
+                    "value": {
+                      "error": "key_not_found",
+                      "extra_info": {},
+                      "message": "Key was not found."
+                    }
+                  },
+                  "wallet_not_found": {
+                    "value": {
+                      "error": "wallet_not_found",
+                      "extra_info": {},
+                      "message": "Wallet was not found."
+                    }
+                  }
+                },
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/WalletNotFoundError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CredentialNotFoundError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/KeyNotFoundError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/DidNotFoundError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Not found"
+          }
+        },
+        "summary": "Patch credential by ID",
+        "tags": [
+          "Verifiable Credential"
+        ]
+      }
+    },
+    "/wallets/{walletId}/credentials/{vcId}/verify": {
+      "get": {
+        "description": "Verifies a verifiable credential by ID that is stored inside the Wallet",
+        "operationId": "CredentialsController_verify",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "vcId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialVerificationResponseDto"
+                }
+              }
+            },
+            "description": "Credential verification complete"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalid_path_param": {
+                    "value": {
+                      "error": "invalid_path_param",
+                      "extra_info": {},
+                      "message": "Invalid path parameter(s). Check \"extra_info.details\" for more details."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidPathParamError"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "credential_not_found": {
+                    "value": {
+                      "error": "credential_not_found",
+                      "extra_info": {},
+                      "message": "Credential was not found."
+                    }
+                  },
+                  "wallet_not_found": {
+                    "value": {
+                      "error": "wallet_not_found",
+                      "extra_info": {},
+                      "message": "Wallet was not found."
+                    }
+                  }
+                },
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/WalletNotFoundError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CredentialNotFoundError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "internal_server_error": {
+                    "value": {
+                      "error": "internal_server_error",
+                      "extra_info": {},
+                      "message": "Internal server error."
+                    }
+                  },
+                  "verify_credential_error": {
+                    "value": {
+                      "error": "verify_credential_error",
+                      "extra_info": {},
+                      "message": "Error occurred while verifying a Wallet credential."
+                    }
+                  }
+                },
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/VerifyCredentialError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InternalServerError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Verify credential by ID",
+        "tags": [
+          "Verifiable Credential"
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "bearerFormat": "JWT",
+        "scheme": "bearer",
+        "type": "http"
+      },
+      "mutualTLS": {
+        "type": "mutualTLS"
+      }
+    },
+    "schemas": {
+      "App": {
+        "properties": {
+          "component_name": {
+            "type": "string"
+          },
+          "current_api_version": {
+            "type": "string"
+          },
+          "git_commit": {
+            "type": "string"
+          },
+          "node": {
+            "type": "string"
+          },
+          "npm_config_user_agent": {
+            "type": "string"
+          },
+          "npm_lifecycle_event": {
+            "type": "string"
+          },
+          "npm_node_execpath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "component_name",
+          "current_api_version",
+          "git_commit",
+          "npm_config_user_agent",
+          "node",
+          "npm_lifecycle_event",
+          "npm_node_execpath"
+        ],
+        "type": "object"
+      },
+      "AppSignal": {
+        "properties": {
+          "active": {
+            "type": "string"
+          },
+          "env": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "active",
+          "name",
+          "env"
+        ],
+        "type": "object"
+      },
+      "ClaimObject": {
+        "additionalProperties": true,
+        "properties": {
+          "display": {
+            "items": {
+              "$ref": "#/components/schemas/DisplayClaimObject"
+            },
+            "type": "array"
+          },
+          "mandatory": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "Component": {
+        "properties": {
+          "api_version": {
+            "type": "string"
+          },
+          "git_commit": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_version",
+          "name",
+          "git_commit"
+        ],
+        "type": "object"
+      },
+      "CreateWalletPayloadDto": {
+        "properties": {
+          "external_reference": {
+            "example": "9b4cf584-4f82-4836-9b17-66482cd2b171",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CredentialDefinition": {
+        "properties": {
+          "credentialSubject": {
+            "additionalProperties": true,
+            "description": "Object containing a list of name/value pairs, where each name identifies a claim offered in the Credential.",
+            "type": "object"
+          },
+          "type": {
+            "description": "Array designating the types a certain Credential type supports, according to VC Data Model, Section 4.3.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      },
+      "CredentialImportRequestModelDto": {
+        "properties": {
+          "credential": {
+            "description": "The encoded string representation of the credential to be imported.",
+            "example": "LUpixVCWJk0eOt4CXQe1NXK....WZwmhmn9OQp6YxX0a2L",
+            "type": "string"
+          },
+          "meta": {
+            "description": "Additional information about the credential to be imported.",
+            "properties": {
+              "did": {
+                "description": "A DID managed by the wallet used to perform credential key binding.",
+                "example": "did:key:z6MkipmTzRNjTHKujEEAhG5JR5zHd578uUYNTnWaYMALRDUs",
+                "type": "string"
+              },
+              "kid": {
+                "description": "An ID for a key managed by the wallet used to perform credential key binding.",
+                "example": "lA5y6IC-aLCpHtf-NytvSbYGZWqAfbrgAoGn3F3l0NI",
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "credential"
+        ],
+        "type": "object"
+      },
+      "CredentialNotFoundError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "credential_not_found"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "CredentialOfferDto": {
+        "properties": {
+          "credential_issuer": {
+            "example": "https://issuer.example.com",
+            "type": "string"
+          },
+          "credentials": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "grants": {
+            "$ref": "#/components/schemas/GrantDto"
+          }
+        },
+        "type": "object"
+      },
+      "CredentialPatchRequestModelDto": {
+        "properties": {
+          "meta": {
+            "description": "Additional information about the credential to be imported.",
+            "properties": {
+              "did": {
+                "description": "A DID managed by the wallet used to perform credential key binding.",
+                "example": "did:key:z6MkipmTzRNjTHKujEEAhG5JR5zHd578uUYNTnWaYMALRDUs",
+                "type": "string"
+              },
+              "kid": {
+                "description": "An ID for a key managed by the wallet used to perform credential key binding.",
+                "example": "lA5y6IC-aLCpHtf-NytvSbYGZWqAfbrgAoGn3F3l0NI",
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "CredentialReceiveGetAccessTokenRequestModelDto": {
+        "properties": {
+          "authorization_code": {
+            "description": "code claimed via authorization code flow. It can to be exchanged for the access token.",
+            "type": "string"
+          },
+          "authorization_details": {
+            "description": "Contains details about the credentials the Wallet wants to obtain.",
+            "items": {
+              "properties": {
+                "credential_definition": {
+                  "oneOf": [
+                    {
+                      "properties": {
+                        "vct": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    {
+                      "properties": {
+                        "type": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                },
+                "format": {
+                  "enum": [
+                    "vc+sd-jwt",
+                    "jwt_vc_json"
+                  ],
+                  "type": "string"
+                },
+                "type": {
+                  "enum": [
+                    "openid_credential"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "format"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "client_id": {
+            "description": "Client identifier in OAuth 2.0",
+            "type": "string"
+          },
+          "client_secret": {
+            "type": "string"
+          },
+          "code_challenge": {
+            "description": "Part of PKCE, used when calling the authorization endpoint.",
+            "type": "string"
+          },
+          "code_challenge_method": {
+            "description": "Part of PKCE, used when calling the authorization endpoint.",
+            "type": "string"
+          },
+          "code_verifier": {
+            "description": "Part of PKCE, used when calling the token endpoint, together with the authorization code",
+            "type": "string"
+          },
+          "credential_issuer": {
+            "description": "The URL of the Credential Issuer from which the Wallet is requested to obtain one or more Credentials. The authorization server is determined based on the Credential Issuer Metadata.",
+            "type": "string"
+          },
+          "grant_type": {
+            "description": "",
+            "enum": [
+              "authorization_code",
+              "urn:ietf:params:oauth:grant-type:pre-authorized_code"
+            ],
+            "type": "string"
+          },
+          "issuer_state": {
+            "description": "String value identifying a certain processing context at the Credential Issuer. This value is typically provided in the credential offer. When it is, the Wallet MUST send the value back to the Credential Issuer.",
+            "type": "string"
+          },
+          "pre-authorized_code": {
+            "description": "The code representing the authorization to obtain Credentials of a certain type. This parameter MUST be present if the grant_type is urn:ietf:params:oauth:grant-type:pre-authorized_code. Typically provided by the Credential Issuer in the credential offer.",
+            "type": "string"
+          },
+          "redirect_uri": {
+            "description": "Only relevant when the grant_type is authorization_code.",
+            "type": "string"
+          },
+          "scope": {
+            "description": "Request credentials using OAuth 2.0 scope parameter",
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "tx_code": {
+            "description": "String value containing a Transaction Code. This value MUST be present if a tx_code object was present in the Credential Offer (including if the object was empty).  This parameter MUST only be used if the grant_type is urn:ietf:params:oauth:grant-type:pre-authorized_code.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CredentialReceiveGetAccessTokenResponseModelDto": {
+        "properties": {
+          "access_token": {
+            "type": "string"
+          },
+          "authorization_url": {
+            "description": "The URL to open in a browser in order to complete the authorization with the Authorization Server.",
+            "type": "string"
+          },
+          "c_nonce": {
+            "description": "String containing a nonce to be used to create a proof of possession of key material when requesting a Credential",
+            "example": "fGFF7UkhLa",
+            "type": "string"
+          },
+          "c_nonce_expires_in": {
+            "description": "Number denoting the lifetime in seconds of the c_nonce.",
+            "example": 86400,
+            "type": "integer"
+          },
+          "credential_definition": {
+            "oneOf": [
+              {
+                "properties": {
+                  "vct": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              {
+                "properties": {
+                  "type": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          },
+          "refresh_token": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CredentialReceiveGetCredentialRequestModelDto": {
+        "properties": {
+          "access_token": {
+            "type": "string"
+          },
+          "credential_definition": {
+            "oneOf": [
+              {
+                "properties": {
+                  "vct": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              {
+                "properties": {
+                  "type": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          },
+          "did": {
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "vc+sd-jwt",
+              "jwt_vc_json"
+            ],
+            "type": "string"
+          },
+          "kid": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "transaction_id": {
+            "description": "A string identifying a Deferred Issuance transaction. This claim is contained in the response if the Credential Issuer was unable to immediately issue the Credential",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CredentialReceiveGetCredentialResponseModelDto": {
+        "properties": {
+          "c_nonce": {
+            "description": "String containing a nonce to be used to create a proof of possession of key material when requesting a Credential",
+            "example": "fGFF7UkhLa",
+            "type": "string"
+          },
+          "c_nonce_expires_in": {
+            "description": "Number denoting the lifetime in seconds of the c_nonce.",
+            "example": 86400,
+            "type": "integer"
+          },
+          "credential": {
+            "description": "Contains issued Credential. MUST be present when transaction_id is not returned. MAY be a string or an object, depending on the Credential format. See Appendix E for the Credential format specific encoding requirements.",
+            "type": "string"
+          },
+          "credential_id": {
+            "description": "Id under which the credential is stored in the wallet",
+            "example": "urn:uuid:4b5c8b6f-9b8a-4c8b-8b6f-9b8a4c8b6f9b",
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "transaction_id": {
+            "description": "A string identifying a Deferred Issuance transaction. This claim is contained in the response if the Credential Issuer was unable to immediately issue the Credential",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "type": "object"
+      },
+      "CredentialReceiveRequestModelDto": {
+        "properties": {
+          "credential_offer": {
+            "$ref": "#/components/schemas/CredentialOfferDto"
+          },
+          "credential_offer_uri": {
+            "example": "https://example.com/credential_offer",
+            "type": "string"
+          },
+          "credential_offer_endpoint": {
+            "example": "openid-credential-offer://credential_offer_uri=https://example.com/credential_offer",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CredentialReceiveResponseModelDto": {
+        "properties": {
+          "credential_offer": {
+            "$ref": "#/components/schemas/CredentialOfferDto"
+          },
+          "credential_offer_uri": {
+            "example": "openid-credential-offer://credential_offer_uri=https://example.com/credential_offer",
+            "type": "string"
+          },
+          "state": {
+            "example": "e0d7bd1e-dce5-4366-989f-4647af68412a",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CredentialReceiveStatesModelDto": {
+        "type": "object",
+        "properties": {
+          "issuance_states": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CredentialReceiveStateModelDto"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "credentials",
+          "meta"
+        ]
+      },
+      "CredentialReceiveStateModelDto": {
+        "properties": {
+          "access_token": {
+            "type": "string"
+          },
+          "authorization_url": {
+            "description": "The URL to open in a browser in order to complete the authorization with the Authorization Server.",
+            "type": "string"
+          },
+          "c_nonce": {
+            "description": "String containing a nonce to be used to create a proof of possession of key material when requesting a Credential",
+            "example": "fGFF7UkhLa",
+            "type": "string"
+          },
+          "c_nonce_expires_in": {
+            "description": "Number denoting the lifetime in seconds of the c_nonce.",
+            "example": 86400,
+            "type": "integer"
+          },
+          "credential": {
+            "description": "Contains issued Credential. MUST be present when transaction_id is not returned. MAY be a string or an object, depending on the Credential format. See Appendix E for the Credential format specific encoding requirements.",
+            "type": "string"
+          },
+          "credential_definition": {
+            "oneOf": [
+              {
+                "properties": {
+                  "vct": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              {
+                "properties": {
+                  "type": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              }
+            ]
+          },
+          "credential_id": {
+            "description": "Id under which the credential is stored in the wallet",
+            "example": "urn:uuid:4b5c8b6f-9b8a-4c8b-8b6f-9b8a4c8b6f9b",
+            "type": "string"
+          },
+          "credential_offer": {
+            "$ref": "#/components/schemas/CredentialOfferDto"
+          },
+          "credential_offer_uri": {
+            "example": "openid-credential-offer://credential_offer_uri=https://example.com/credential_offer",
+            "type": "string"
+          },
+          "did": {
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "vc+sd-jwt",
+              "jwt_vc_json"
+            ],
+            "type": "string"
+          },
+          "kid": {
+            "type": "string"
+          },
+          "refresh_token": {
+            "type": "string"
+          },
+          "response_type": {
+            "description": "This value is always `code`",
+            "enum": [
+              "code"
+            ],
+            "type": "string"
+          },
+          "state": {
+            "example": "e0d7bd1e-dce5-4366-989f-4647af68412a",
+            "type": "string"
+          },
+          "transaction_id": {
+            "description": "A string identifying a Deferred Issuance transaction. This claim is contained in the response if the Credential Issuer was unable to immediately issue the Credential",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CredentialResponseDto": {
+        "properties": {
+          "credential": {
+            "$ref": "#/components/schemas/CredentialResponseModelDto"
+          }
+        },
+        "required": [
+          "credential"
+        ],
+        "type": "object"
+      },
+      "CredentialResponseModelDto": {
+        "properties": {
+          "created_at": {
+            "description": "The date and time when the credential was added to a Wallet.",
+            "example": "2024-01-09T12:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "credential": {
+            "description": "The encoded string representation of the credential.",
+            "example": "LUpixVCWJk0eOt4CXQe1NXK....WZwmhmn9OQp6YxX0a2L",
+            "type": "string"
+          },
+          "format": {
+            "description": "Format of the credential.",
+            "enum": [
+              "vc+sd-jwt",
+              "jwt_vc_json"
+            ],
+            "type": "string"
+          },
+          "id": {
+            "description": "A unique identifier of the credential.",
+            "example": "urn:uuid:df9a133c-0fca-4db1-8892-2f881aa44109",
+            "type": "string"
+          },
+          "meta": {
+            "properties": {
+              "claims": {
+                "$ref": "#/components/schemas/ClaimObject",
+                "description": "Object containing a list of name/value pairs. Each pair is a claim about the subject in the credential.\n\nSnapshot from Credential Issuer Metadata taken at the time of issuance.\nSee Appendix A.2.2 in OpenID for Verifiable Credential Issuance for more information.\n"
+              },
+              "credential_definition": {
+                "$ref": "#/components/schemas/CredentialDefinition",
+                "description": "Object containing the detailed description of the credential type of the W3C VC Data Model.\n\nSnapshot from Credential Issuer Metadata taken at the time of issuance.\nSee Appendix A.1.1.2 in OpenID for Verifiable Credential Issuance for more information.\n"
+              },
+              "did": {
+                "description": "A DID managed by the wallet used to perform credential key binding.",
+                "example": "did:key:z6MkipmTzRNjTHKujEEAhG5JR5zHd578uUYNTnWaYMALRDUs",
+                "type": "string"
+              },
+              "display": {
+                "$ref": "#/components/schemas/DisplayObject",
+                "description": "Array of objects, where each object contains information on how to display the credential.\n\nSnapshot from Credential Issuer Metadata taken at the time of issuance.\nSee section 11.2.3 in OpenID for Verifiable Credential Issuance for more information.\n"
+              },
+              "kid": {
+                "description": "An ID for a key managed by the wallet used to perform credential key binding.",
+                "example": "lA5y6IC-aLCpHtf-NytvSbYGZWqAfbrgAoGn3F3l0NI",
+                "type": "string"
+              },
+              "vct": {
+                "description": "The Credential type of the SD-JWT VC.\n\nSnapshot from Credential Issuer Metadata taken at the time of issuance.\nSee Appendix A.2.2 in OpenID for Verifiable Credential Issuance for more information.\n",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "format",
+          "credential"
+        ],
+        "type": "object"
+      },
+      "CredentialVerificationCheckModelDto": {
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "extra_info": {
+            "type": "object"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "CredentialVerificationResponseDto": {
+        "properties": {
+          "checks": {
+            "enum": [
+              "format",
+              "signature",
+              "expiration",
+              "nonce",
+              "schema",
+              "revocation_status"
+            ],
+            "type": "string"
+          },
+          "errors": {
+            "$ref": "#/components/schemas/CredentialVerificationCheckModelDto"
+          },
+          "id": {
+            "type": "string"
+          },
+          "warnings": {
+            "$ref": "#/components/schemas/CredentialVerificationCheckModelDto"
+          }
+        },
+        "required": [
+          "id",
+          "checks",
+          "warnings",
+          "errors"
+        ],
+        "type": "object"
+      },
+      "CredentialsResponseDto": {
+        "properties": {
+          "credentials": {
+            "items": {
+              "$ref": "#/components/schemas/CredentialResponseModelDto"
+            },
+            "type": "array"
+          },
+          "meta": {
+            "default": {},
+            "example": {
+              "order": "asc",
+              "per_page": 20
+            },
+            "type": "object"
+          },
+          "next_page_after": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "credentials",
+          "next_page_after",
+          "meta"
+        ],
+        "type": "object"
+      },
+      "Database": {
+        "properties": {
+          "host": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "port": {
+            "type": "string"
+          },
+          "user": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "host",
+          "port",
+          "name",
+          "user"
+        ],
+        "type": "object"
+      },
+      "DeleteCredentialError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "delete_credential_error"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "DeleteWalletError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "delete_wallet_error"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "DidNotFoundError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "did_not_found"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "DisplayClaimObject": {
+        "properties": {
+          "locale": {
+            "pattern": "^[a-zA-Z]{2,3}(-[a-zA-Z]{2})?(-[a-zA-Z]{2,3})?$",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "DisplayObject": {
+        "properties": {
+          "background_color": {
+            "type": "string"
+          },
+          "locale": {
+            "pattern": "^[a-zA-Z]{2,3}(-[a-zA-Z]{2})?(-[a-zA-Z]{2,3})?$",
+            "type": "string"
+          },
+          "logo": {
+            "properties": {
+              "alt_text": {
+                "type": "string"
+              },
+              "url": {
+                "format": "uri",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "name": {
+            "type": "string"
+          },
+          "text_color": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "GrantDto": {
+        "properties": {
+          "authorization_code": {
+            "properties": {
+              "issuer_state": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "urn:ietf:params:oauth:grant-type:pre-authorized_code": {
+            "properties": {
+              "pre_authorized_code": {
+                "type": "string"
+              },
+              "tx_code": {
+                "type": "object",
+                "properties": {
+                  "input_mode": {
+                    "type": "string",
+                    "enum": [
+                      "numeric",
+                      "text"
+                    ]
+                  },
+                  "length": {
+                    "type": "number"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "HealthCheck": {
+        "properties": {
+          "database": {
+            "type": "object"
+          },
+          "disk": {
+            "type": "object"
+          },
+          "memory": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "database",
+          "memory",
+          "disk"
+        ],
+        "type": "object"
+      },
+      "InputDescriptor": {
+        "additionalProperties": false,
+        "properties": {
+          "constraints": {
+            "additionalProperties": false,
+            "properties": {
+              "fields": {
+                "items": {
+                  "properties": {
+                    "filter": {
+                      "additionalProperties": true,
+                      "description": "http://json-schema.org/draft-07/schema",
+                      "type": "object"
+                    },
+                    "path": {
+                      "example": "[\"$.issuer\", \"$.vc.issuer\", \"$.iss\"]",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "limit_disclosure": {
+                "enum": [
+                  "required",
+                  "preferred"
+                ],
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "format": {
+            "additionalProperties": true,
+            "description": "http://identity.foundation/claim-format-registry/schemas/presentation-definition-claim-format-designations.json",
+            "type": "object"
+          },
+          "group": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "constraints"
+        ],
+        "type": "object"
+      },
+      "InternalServerError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "internal_server_error"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "InvalidCredentialDataError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "invalid_credential_data"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "InvalidCredentialOfferUrlError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "invalid_credential_offer_url"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "InvalidDateFilterValueError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "invalid_date_filter_value"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "InvalidOrderFilterValueError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "invalid_order_filter_value"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "InvalidPathParamError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "invalid_path_param"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "InvalidPerPageFilterValueError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "invalid_per_page_filter_value"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "InvalidPresentationRequestUrlError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "invalid_presentation_request_url"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "InvalidRequestPayloadError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "invalid_request_payload"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "JSONWebKey": {
+        "properties": {
+          "crv": {
+            "type": "string"
+          },
+          "d": {
+            "type": "string"
+          },
+          "dp": {
+            "type": "string"
+          },
+          "dq": {
+            "type": "string"
+          },
+          "e": {
+            "type": "string"
+          },
+          "k": {
+            "type": "string"
+          },
+          "kid": {
+            "type": "string"
+          },
+          "kty": {
+            "type": "string"
+          },
+          "n": {
+            "type": "string"
+          },
+          "p": {
+            "type": "string"
+          },
+          "q": {
+            "type": "string"
+          },
+          "qi": {
+            "type": "string"
+          },
+          "x": {
+            "type": "string"
+          },
+          "y": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "JSONWebKeyPub": {
+        "properties": {
+          "crv": {
+            "type": "string"
+          },
+          "e": {
+            "type": "string"
+          },
+          "k": {
+            "type": "string"
+          },
+          "kid": {
+            "type": "string"
+          },
+          "kty": {
+            "type": "string"
+          },
+          "n": {
+            "type": "string"
+          },
+          "x": {
+            "type": "string"
+          },
+          "y": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "KeyNotFoundError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "key_not_found"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "KeyNotSupportedError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "key_not_supported"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "KeySigningNotSupportedError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "key_signing_not_supported"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "LoadCredentialError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "load_credential_error"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "LoadCredentialsError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "load_credentials_error"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "LoadWalletError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "load_wallet_error"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "PresentationDefinition": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "input_descriptors": {
+            "items": {
+              "$ref": "#/components/schemas/InputDescriptor"
+            },
+            "type": "array"
+          },
+          "submission_requirements": {
+            "items": {
+              "$ref": "#/components/schemas/SubmissionRequirement"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "input_descriptors"
+        ],
+        "type": "object"
+      },
+      "PresentationRequestSendRequestModelDto": {
+        "properties": {
+          "authorization_request_uri": {
+            "example": "openid-vc://?request_uri=https://example.com/oidc/presentations/requests/c63aa3e9-dc7d-4753-9ac8-30bf7add6e4c/jwt",
+            "type": "string"
+          },
+          "protocol_version": {
+            "description": "Specification draft version presentation request uses. If not specified draft10 is used.",
+            "type": "string",
+            "enum": [
+              "draft10",
+              "draft18"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "authorization_request_uri"
+        ]
+      },
+      "PresentationStatesResponseDto": {
+        "type": "object",
+        "properties": {
+          "presentation_states": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PresentationStateResponseDto"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "required": [
+          "credentials",
+          "meta"
+        ]
+      },
+      "PresentationStateResponseDto": {
+        "properties": {
+          "authorization_request_uri": {
+            "example": "openid-vc://?request_uri=https://example.com/oidc/presentations/requests/c63aa3e9-dc7d-4753-9ac8-30bf7add6e4c/jwt",
+            "type": "string"
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "meta": {
+            "description": "",
+            "properties": {
+              "request": {
+                "description": "JWT respresentation of the request following RFC9101 (JAR)",
+                "example": "lsdkjflkdsj..",
+                "type": "string"
+              },
+              "submission_status": {
+                "enum": [
+                  "pending",
+                  "failed",
+                  "success"
+                ],
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "nonce": {
+            "description": "Nonce provided by the verifier to be returned in the response",
+            "type": "string"
+          },
+          "presentation_definition": {
+            "$ref": "#/components/schemas/PresentationDefinition"
+          },
+          "redirect_uri": {
+            "type": "string"
+          },
+          "response_mode": {
+            "description": "Parameter to ask the Wallet to send the response to the verifier. Possible values are 'direct_post'",
+            "enum": [
+              "direct_post"
+            ],
+            "type": "string"
+          },
+          "response_type": {
+            "description": "Response type of the request. Possible values are `vp_token`, `id_token`",
+            "enum": [
+              "vp_token",
+              "vp_token id_token"
+            ],
+            "type": "string"
+          },
+          "response_uri": {
+            "description": "Response uri of the request. Only relevant if response type is `direct_post`",
+            "type": "string"
+          },
+          "state": {
+            "example": "e0d7bd1e-dce5-4366-989f-4647af68412a",
+            "type": "string"
+          },
+          "verifier_state": {
+            "description": "State provided by the verifier to be returned in the response",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "AuthorizationRequestResponseDto": {
+        "properties": {
+          "authorization_request_uri": {
+            "example": "openid-vc://?request_uri=https://example.com/oidc/presentations/requests/c63aa3e9-dc7d-4753-9ac8-30bf7add6e4c/jwt",
+            "type": "string"
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "meta": {
+            "description": "",
+            "properties": {
+              "request": {
+                "description": "JWT respresentation of the request following RFC9101 (JAR)",
+                "example": "lsdkjflkdsj..",
+                "type": "string"
+              },
+              "submission_status": {
+                "enum": [
+                  "pending",
+                  "failed",
+                  "success"
+                ],
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "nonce": {
+            "description": "Nonce provided by the verifier to be returned in the response",
+            "type": "string"
+          },
+          "presentation_definition": {
+            "$ref": "#/components/schemas/PresentationDefinition"
+          },
+          "redirect_uri": {
+            "type": "string"
+          },
+          "response_mode": {
+            "description": "Parameter to ask the Wallet to send the response to the verifier. Possible values are 'direct_post'",
+            "enum": [
+              "direct_post"
+            ],
+            "type": "string"
+          },
+          "response_type": {
+            "description": "Response type of the request. Possible values are `vp_token`, `id_token`",
+            "enum": [
+              "vp_token",
+              "vp_token id_token"
+            ],
+            "type": "string"
+          },
+          "response_uri": {
+            "description": "Response uri of the request. Only relevant if response type is `direct_post`",
+            "type": "string"
+          },
+          "state": {
+            "example": "e0d7bd1e-dce5-4366-989f-4647af68412a",
+            "type": "string"
+          },
+          "verifier_state": {
+            "description": "State provided by the verifier to be returned in the response",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "PresentationRequestSetCredentialsRequestModelDto": {
+        "properties": {
+          "credentials": {
+            "items": {
+              "properties": {
+                "credential": {
+                  "properties": {
+                    "claims_to_disclose": {
+                      "description": "List of claims to disclose when presenting the credential. When a claim is nested, use object notation.\n\nExamples: `given_name`, `address.street` or `nationality.country[0]`\n",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "kid": {
+                      "description": "Key to use for signing the presentation of the credential. If no key is specified, the key linked to the credential is used. If no key is linked to the credential, no signature is added to the presentation.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ],
+                  "type": "object"
+                },
+                "input_descriptor_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "input_descriptor_id",
+                "credential"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "state": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "credentials"
+        ],
+        "type": "object"
+      },
+      "PresentationRequestSetCredentialsResponseModelDto": {
+        "properties": {
+          "credentials": {
+            "items": {
+              "properties": {
+                "credential": {
+                  "properties": {
+                    "claims_to_disclose": {
+                      "description": "List of claims to disclose when presenting the credential. When a claim is nested, use object notation.\n\nExamples: `given_name`, `address.street` or `nationality.country[0]`\n",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "kid": {
+                      "description": "Key to use for signing the presentation of the credential. If no key is specified, the key linked to the credential is used. If no key is linked to the credential, no signature is added to the presentation.",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "input_descriptor_id": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "meta": {
+            "description": "",
+            "properties": {
+              "submission_status": {
+                "enum": [
+                  "pending",
+                  "failed",
+                  "success"
+                ],
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "presentation_definition": {
+            "$ref": "#/components/schemas/PresentationDefinition"
+          },
+          "state": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "credentials"
+        ],
+        "type": "object"
+      },
+      "PresentationRequestSubmitRequestModelDto": {
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "credentials": {
+            "items": {
+              "properties": {
+                "credential": {
+                  "properties": {
+                    "claims_to_disclose": {
+                      "description": "List of claims to disclose when presenting the credential. When a claim is nested, use object notation.\n\nExamples: `given_name`, `address.street` or `nationality.country[0]`\n",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "kid": {
+                      "description": "Key to use for signing the presentation of the credential. If no key is specified, the key linked to the credential is used. If no key is linked to the credential, no signature is added to the presentation.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ],
+                  "type": "object"
+                },
+                "input_descriptor_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "input_descriptor_id",
+                "credential"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "nonce": {
+            "description": "Nonce provided by the verifier to be returned in the response",
+            "type": "string"
+          },
+          "presentation_definition": {
+            "$ref": "#/components/schemas/PresentationDefinition"
+          },
+          "redirect_uri": {
+            "type": "string"
+          },
+          "response_mode": {
+            "description": "Parameter to ask the Wallet to send the response to the verifier. Possible values are 'direct_post', 'post'.",
+            "enum": [
+              "direct_post",
+              "post"
+            ],
+            "type": "string"
+          },
+          "response_type": {
+            "description": "Response type of the request. Possible values are `vp_token`, `id_token`",
+            "enum": [
+              "vp_token",
+              "vp_token id_token",
+              "id_token"
+            ],
+            "type": "string"
+          },
+          "response_uri": {
+            "description": "Response uri of the request. Only relevant if response type is `direct_post`",
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "verifier_state": {
+            "description": "State provided by the verifier to be returned in the response",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "type": "object"
+      },
+      "PresentationRequestSubmitResponseModelDto": {
+        "properties": {
+          "meta": {
+            "description": "",
+            "properties": {
+              "submission_status": {
+                "enum": [
+                  "pending",
+                  "failed",
+                  "success"
+                ],
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "redirect_uri": {
+            "description": "Redirect URI to follow on the frontend.\n\nIn case of response_mode `fragment`, this contains the Authorization Response attributes and this is how they are passed to the verifier.\n\nIn case of response_mode `direct_post`, this is the URI that was returned after successfully posting the Authorization Response to the `response_uri` of the verifier.\n",
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RegisterWalletError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "register_wallet_error"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "StatusDto": {
+        "properties": {
+          "app": {
+            "$ref": "#/components/schemas/App"
+          },
+          "appsignal": {
+            "$ref": "#/components/schemas/AppSignal"
+          },
+          "database": {
+            "$ref": "#/components/schemas/Database"
+          },
+          "healthCheck": {
+            "$ref": "#/components/schemas/HealthCheck"
+          }
+        },
+        "required": [
+          "app",
+          "appsignal",
+          "database",
+          "healthCheck"
+        ],
+        "type": "object"
+      },
+      "SubmissionRequirement": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "count": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "from": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "rule": {
+                "enum": [
+                  "pick"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "rule",
+              "from"
+            ]
+          }
+        ],
+        "type": "object"
+      },
+      "VerifyCredentialError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "verify_credential_error"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "VersionDto": {
+        "properties": {
+          "component": {
+            "$ref": "#/components/schemas/Component"
+          }
+        },
+        "required": [
+          "component"
+        ],
+        "type": "object"
+      },
+      "WalletCountsResponseDto": {
+        "properties": {
+          "wallet_metrics": {
+            "$ref": "#/components/schemas/WalletCountsResponseModelDto"
+          }
+        },
+        "required": [
+          "wallet_metrics"
+        ],
+        "type": "object"
+      },
+      "WalletCountsResponseModelDto": {
+        "properties": {
+          "all_wallets": {
+            "type": "number"
+          },
+          "non_empty_wallets": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "all_wallets",
+          "non_empty_wallets"
+        ],
+        "type": "object"
+      },
+      "WalletDIDDto": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "keys": {
+            "items": {
+              "properties": {
+                "kid": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "WalletNotFoundError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "wallet_not_found"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "WalletResponseDto": {
+        "properties": {
+          "wallet": {
+            "$ref": "#/components/schemas/WalletResponseModelDto"
+          }
+        },
+        "required": [
+          "wallet"
+        ],
+        "type": "object"
+      },
+      "WalletResponseModelDto": {
+        "properties": {
+          "dids": {
+            "items": {
+              "$ref": "#/components/schemas/WalletDIDDto"
+            },
+            "type": "array"
+          },
+          "external_reference": {
+            "example": "external-reference-param-value",
+            "type": "string"
+          },
+          "id": {
+            "example": "da3be97a-1c30-498e-9a2f-12acd5e3962b",
+            "type": "string"
+          },
+          "keys": {
+            "items": {
+              "$ref": "#/components/schemas/JSONWebKeyPub"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "external_reference",
+          "keys",
+          "dids"
+        ],
+        "type": "object"
+      },
+      "Meta": {
+        "type": "object",
+        "properties": {
+          "order_by": {
+            "type": "string",
+            "example": "name"
+          },
+          "order": {
+            "type": "string",
+            "example": "ASC",
+            "enum": [
+              "ASC",
+              "DESC"
+            ]
+          },
+          "order_from_params": {
+            "type": "boolean",
+            "example": true
+          },
+          "per_page": {
+            "type": "number",
+            "example": 10
+          },
+          "per_page_from_params": {
+            "type": "boolean",
+            "example": true
+          },
+          "records_count": {
+            "type": "number",
+            "example": 100
+          },
+          "page": {
+            "type": "number",
+            "example": 1
+          },
+          "page_count": {
+            "type": "number",
+            "example": 10
+          }
+        },
+        "required": [
+          "order_by",
+          "order",
+          "order_from_params",
+          "per_page",
+          "per_page_from_params",
+          "records_count",
+          "page",
+          "page_count"
+        ]
+      }
+    }
+  }
+}
