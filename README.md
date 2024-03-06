@@ -136,33 +136,59 @@ Swift Package Manager is Apple's decentralized dependency manager to integrate l
 To integrate **MeecoHolderWalletApiSdk** into your project using SPM, specify it in your Package.swift file:
 
 ```swift
-let package = Package(
-  ...
-  dependencies: [
-    .package(url: "https://bitbucket.org/meeco/MeecoHolderWalletApiSdk", from: "0.0.1-beta.1")
-  ],
-  targets: [
-      .target(
-          name: "YourTarget",
-          dependencies: ["MeecoHolderWalletApiSdk", ...]),
-      ...
-  ]
-)
+
+  import PackageDescription
+
+  let package = Package(
+      name: "GreetingServiceClient",
+          platforms: [
+          .macOS(.v10_15), // Specify minimum platform version here
+      ],
+      dependencies: [
+              .package(url: "https://bitbucket.org/meeco/meeco-holder-wallet-api-sdk-swift", from: "0.0.1-beta.1"),
+          ],
+      targets: [
+          // Targets are the basic building blocks of a package, defining a module or a test suite.
+          // Targets can depend on other targets in this package and products from dependencies.
+          .executableTarget(
+              name: "GreetingServiceClient",
+              dependencies: [
+                          .product(name: "MeecoHolderWalletApiSdk", package: "meeco-holder-wallet-api-sdk-swift")
+                      ]
+          ),
+      ]
+  )
 ```
 
 If this is for an Xcode project simply import the repo at:
 
 ```
-https://bitbucket.org/meeco/MeecoHolderWalletApiSdk
+https://bitbucket.org/meeco/meeco-holder-wallet-api-sdk-swift
 ```
 
 ## Usage
 
-_Coming Soon!_
+```swift
+  import Foundation
+  import OpenAPIURLSession
+  import MeecoHolderWalletApiSdk
+
+  let client = Client(
+      serverURL: try Foundation.URL(
+          validatingOpenAPIServerURL: "http://holder-wallet-dev.svx.internal"
+      ),
+      transport: URLSessionTransport()
+  )
+
+
+  let response = try await client.AppController_getVersion()
+  print(try response.ok.body.json)
+
+```
 
 ## Documentation
 
-Be sure to check out the [Holder Wallet API for more details](https://holder-wallet-dev.svx.internal/api).
+_Coming Soon!_
 
 ## Roadmap
 
