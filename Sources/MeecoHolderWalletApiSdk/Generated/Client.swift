@@ -1343,6 +1343,28 @@ public struct Client: APIProtocol {
                         preconditionFailure("bestContentType chose an invalid content type.")
                     }
                     return .notFound(.init(body: body))
+                case 500:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.DidController_create.Output.InternalServerError.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.CreateDidError.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .internalServerError(.init(body: body))
                 default:
                     return .undocumented(
                         statusCode: response.status.code,
@@ -1386,6 +1408,28 @@ public struct Client: APIProtocol {
                 switch response.status.code {
                 case 204:
                     return .noContent(.init())
+                case 400:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.DidController_delete.Output.BadRequest.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.SvxDidCannotBeDeletedError.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .badRequest(.init(body: body))
                 case 404:
                     let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
                     let body: Operations.DidController_delete.Output.NotFound.Body
@@ -1408,6 +1452,28 @@ public struct Client: APIProtocol {
                         preconditionFailure("bestContentType chose an invalid content type.")
                     }
                     return .notFound(.init(body: body))
+                case 500:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.DidController_delete.Output.InternalServerError.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.DeleteDidError.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .internalServerError(.init(body: body))
                 default:
                     return .undocumented(
                         statusCode: response.status.code,
@@ -1827,8 +1893,10 @@ public struct Client: APIProtocol {
     ///
     /// Key binding is performed by providing either
     ///
-    /// - `kid`: Public key is presented.
-    /// - `did`: DID is presented referencing one of the keys contained in the `verificationMethod` section of the DID document.
+    /// - `kid`: Public key is presented. Should be used when credential format is `vc+sd-jwt`.
+    /// - `did`: DID is presented referencing one of the keys contained in the `verificationMethod` section of the DID document. Should be used when credential format is `jwt_vc_json`.
+    ///
+    /// Only one of the `kid` or `did` parameters must be present during the request.
     ///
     /// Both methods involve the wallet presenting key proof to the issuer to ensure control over cryptographic key material.
     ///
@@ -1938,17 +2006,14 @@ public struct Client: APIProtocol {
             }
         )
     }
-    /// Get receive credential state
-    ///
-    /// Get the current state of a receive credential flow.
-    ///
+    /// Get credential receive state
     ///
     /// - Remark: HTTP `GET /wallets/{walletId}/receive/{state}`.
-    /// - Remark: Generated from `#/paths//wallets/{walletId}/receive/{state}/get(ReceiveController_findOne)`.
-    public func ReceiveController_findOne(_ input: Operations.ReceiveController_findOne.Input) async throws -> Operations.ReceiveController_findOne.Output {
+    /// - Remark: Generated from `#/paths//wallets/{walletId}/receive/{state}/get(ReceiveController_getInfo)`.
+    public func ReceiveController_getInfo(_ input: Operations.ReceiveController_getInfo.Input) async throws -> Operations.ReceiveController_getInfo.Output {
         try await client.send(
             input: input,
-            forOperation: Operations.ReceiveController_findOne.id,
+            forOperation: Operations.ReceiveController_getInfo.id,
             serializer: { input in
                 let path = try converter.renderedPath(
                     template: "/wallets/{}/receive/{}",
@@ -1972,7 +2037,7 @@ public struct Client: APIProtocol {
                 switch response.status.code {
                 case 200:
                     let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
-                    let body: Operations.ReceiveController_findOne.Output.Ok.Body
+                    let body: Operations.ReceiveController_getInfo.Output.Ok.Body
                     let chosenContentType = try converter.bestContentType(
                         received: contentType,
                         options: [
@@ -1994,7 +2059,7 @@ public struct Client: APIProtocol {
                     return .ok(.init(body: body))
                 case 404:
                     let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
-                    let body: Operations.ReceiveController_findOne.Output.NotFound.Body
+                    let body: Operations.ReceiveController_getInfo.Output.NotFound.Body
                     let chosenContentType = try converter.bestContentType(
                         received: contentType,
                         options: [
@@ -2014,6 +2079,94 @@ public struct Client: APIProtocol {
                         preconditionFailure("bestContentType chose an invalid content type.")
                     }
                     return .notFound(.init(body: body))
+                case 500:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.ReceiveController_getInfo.Output.InternalServerError.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Operations.ReceiveController_getInfo.Output.InternalServerError.Body.jsonPayload.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .internalServerError(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
+    /// Delete receive credential state
+    ///
+    /// Delete state of a receive credential flow.
+    ///
+    ///
+    /// - Remark: HTTP `DELETE /wallets/{walletId}/receive/{state}`.
+    /// - Remark: Generated from `#/paths//wallets/{walletId}/receive/{state}/delete(ReceiveController_deleteOne)`.
+    public func ReceiveController_deleteOne(_ input: Operations.ReceiveController_deleteOne.Input) async throws -> Operations.ReceiveController_deleteOne.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.ReceiveController_deleteOne.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/wallets/{}/receive/{}",
+                    parameters: [
+                        input.path.walletId,
+                        input.path.state
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .delete
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 500:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.ReceiveController_deleteOne.Output.InternalServerError.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.DeleteReceiveStateError.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .internalServerError(.init(body: body))
                 default:
                     return .undocumented(
                         statusCode: response.status.code,
@@ -2049,6 +2202,48 @@ public struct Client: APIProtocol {
                     method: .get
                 )
                 suppressMutabilityWarning(&request)
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
+                    name: "error",
+                    value: input.query.error
+                )
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
+                    name: "error_description",
+                    value: input.query.error_description
+                )
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
+                    name: "error_uri",
+                    value: input.query.error_uri
+                )
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
+                    name: "code",
+                    value: input.query.code
+                )
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
+                    name: "state",
+                    value: input.query.state
+                )
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
+                    name: "iss",
+                    value: input.query.iss
+                )
                 return (request, nil)
             },
             deserializer: { response, responseBody in
@@ -2632,6 +2827,28 @@ public struct Client: APIProtocol {
                         preconditionFailure("bestContentType chose an invalid content type.")
                     }
                     return .notFound(.init(body: body))
+                case 500:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.SendController_submit.Output.InternalServerError.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.InvalidClaimsToDiscloseError.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .internalServerError(.init(body: body))
                 default:
                     return .undocumented(
                         statusCode: response.status.code,
@@ -2729,6 +2946,117 @@ public struct Client: APIProtocol {
             }
         )
     }
+    /// Delete Verifiable Presentation State by ID
+    ///
+    /// Delete state of a presentation flow
+    ///
+    /// - Remark: HTTP `DELETE /wallets/{walletId}/send/{state}`.
+    /// - Remark: Generated from `#/paths//wallets/{walletId}/send/{state}/delete(SendController_deleteOne)`.
+    public func SendController_deleteOne(_ input: Operations.SendController_deleteOne.Input) async throws -> Operations.SendController_deleteOne.Output {
+        try await client.send(
+            input: input,
+            forOperation: Operations.SendController_deleteOne.id,
+            serializer: { input in
+                let path = try converter.renderedPath(
+                    template: "/wallets/{}/send/{}",
+                    parameters: [
+                        input.path.walletId,
+                        input.path.state
+                    ]
+                )
+                var request: HTTPTypes.HTTPRequest = .init(
+                    soar_path: path,
+                    method: .delete
+                )
+                suppressMutabilityWarning(&request)
+                converter.setAcceptHeader(
+                    in: &request.headerFields,
+                    contentTypes: input.headers.accept
+                )
+                return (request, nil)
+            },
+            deserializer: { response, responseBody in
+                switch response.status.code {
+                case 204:
+                    return .noContent(.init())
+                case 400:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.SendController_deleteOne.Output.BadRequest.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Components.Schemas.InvalidPathParamError.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .badRequest(.init(body: body))
+                case 404:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.SendController_deleteOne.Output.NotFound.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Operations.SendController_deleteOne.Output.NotFound.Body.jsonPayload.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .notFound(.init(body: body))
+                case 500:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.SendController_deleteOne.Output.InternalServerError.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Operations.SendController_deleteOne.Output.InternalServerError.Body.jsonPayload.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .internalServerError(.init(body: body))
+                default:
+                    return .undocumented(
+                        statusCode: response.status.code,
+                        .init(
+                            headerFields: response.headerFields,
+                            body: responseBody
+                        )
+                    )
+                }
+            }
+        )
+    }
     /// Import credential
     ///
     /// Import an existing credential from a known format into a Wallet.
@@ -2787,7 +3115,7 @@ public struct Client: APIProtocol {
                     switch chosenContentType {
                     case "application/json":
                         body = try await converter.getResponseBodyAsJSON(
-                            Components.Schemas.CredentialResponseModelDto.self,
+                            Components.Schemas.CredentialResponseDto.self,
                             from: responseBody,
                             transforming: { value in
                                 .json(value)
@@ -2879,8 +3207,15 @@ public struct Client: APIProtocol {
                     in: &request,
                     style: .form,
                     explode: true,
-                    name: "next_page_after",
-                    value: input.query.next_page_after
+                    name: "order",
+                    value: input.query.order
+                )
+                try converter.setQueryItemAsURI(
+                    in: &request,
+                    style: .form,
+                    explode: true,
+                    name: "order_by",
+                    value: input.query.order_by
                 )
                 try converter.setQueryItemAsURI(
                     in: &request,
@@ -2893,15 +3228,8 @@ public struct Client: APIProtocol {
                     in: &request,
                     style: .form,
                     explode: true,
-                    name: "order",
-                    value: input.query.order
-                )
-                try converter.setQueryItemAsURI(
-                    in: &request,
-                    style: .form,
-                    explode: true,
-                    name: "format",
-                    value: input.query.format
+                    name: "page",
+                    value: input.query.page
                 )
                 converter.setAcceptHeader(
                     in: &request.headerFields,
@@ -3147,6 +3475,7 @@ public struct Client: APIProtocol {
     /// Patches credential stored inside a Wallet.
     ///
     /// Used to update `did` and `kid` fields in the meta data of the credential. Note that the `did` and `kid` need to reference an existing DID and Key Id.
+    /// This is used to associate an (existing) Key and/or DID controlled by the wallet with the credential to make it easier to reference that Key and/or DID when presenting credentials for example.
     ///
     ///
     /// - Remark: HTTP `PATCH /wallets/{walletId}/credentials/{vcId}`.
@@ -3186,27 +3515,7 @@ public struct Client: APIProtocol {
             deserializer: { response, responseBody in
                 switch response.status.code {
                 case 204:
-                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
-                    let body: Operations.CredentialsController_patch.Output.NoContent.Body
-                    let chosenContentType = try converter.bestContentType(
-                        received: contentType,
-                        options: [
-                            "application/json"
-                        ]
-                    )
-                    switch chosenContentType {
-                    case "application/json":
-                        body = try await converter.getResponseBodyAsJSON(
-                            Components.Schemas.CredentialResponseDto.self,
-                            from: responseBody,
-                            transforming: { value in
-                                .json(value)
-                            }
-                        )
-                    default:
-                        preconditionFailure("bestContentType chose an invalid content type.")
-                    }
-                    return .noContent(.init(body: body))
+                    return .noContent(.init())
                 case 404:
                     let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
                     let body: Operations.CredentialsController_patch.Output.NotFound.Body
@@ -3229,6 +3538,28 @@ public struct Client: APIProtocol {
                         preconditionFailure("bestContentType chose an invalid content type.")
                     }
                     return .notFound(.init(body: body))
+                case 500:
+                    let contentType = converter.extractContentTypeIfPresent(in: response.headerFields)
+                    let body: Operations.CredentialsController_patch.Output.InternalServerError.Body
+                    let chosenContentType = try converter.bestContentType(
+                        received: contentType,
+                        options: [
+                            "application/json"
+                        ]
+                    )
+                    switch chosenContentType {
+                    case "application/json":
+                        body = try await converter.getResponseBodyAsJSON(
+                            Operations.CredentialsController_patch.Output.InternalServerError.Body.jsonPayload.self,
+                            from: responseBody,
+                            transforming: { value in
+                                .json(value)
+                            }
+                        )
+                    default:
+                        preconditionFailure("bestContentType chose an invalid content type.")
+                    }
+                    return .internalServerError(.init(body: body))
                 default:
                     return .undocumented(
                         statusCode: response.status.code,

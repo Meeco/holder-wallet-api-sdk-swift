@@ -188,8 +188,10 @@ public protocol APIProtocol: Sendable {
     ///
     /// Key binding is performed by providing either
     ///
-    /// - `kid`: Public key is presented.
-    /// - `did`: DID is presented referencing one of the keys contained in the `verificationMethod` section of the DID document.
+    /// - `kid`: Public key is presented. Should be used when credential format is `vc+sd-jwt`.
+    /// - `did`: DID is presented referencing one of the keys contained in the `verificationMethod` section of the DID document. Should be used when credential format is `jwt_vc_json`.
+    ///
+    /// Only one of the `kid` or `did` parameters must be present during the request.
     ///
     /// Both methods involve the wallet presenting key proof to the issuer to ensure control over cryptographic key material.
     ///
@@ -211,14 +213,19 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `POST /wallets/{walletId}/receive/get_credential`.
     /// - Remark: Generated from `#/paths//wallets/{walletId}/receive/get_credential/post(ReceiveController_getCredential)`.
     func ReceiveController_getCredential(_ input: Operations.ReceiveController_getCredential.Input) async throws -> Operations.ReceiveController_getCredential.Output
-    /// Get receive credential state
-    ///
-    /// Get the current state of a receive credential flow.
-    ///
+    /// Get credential receive state
     ///
     /// - Remark: HTTP `GET /wallets/{walletId}/receive/{state}`.
-    /// - Remark: Generated from `#/paths//wallets/{walletId}/receive/{state}/get(ReceiveController_findOne)`.
-    func ReceiveController_findOne(_ input: Operations.ReceiveController_findOne.Input) async throws -> Operations.ReceiveController_findOne.Output
+    /// - Remark: Generated from `#/paths//wallets/{walletId}/receive/{state}/get(ReceiveController_getInfo)`.
+    func ReceiveController_getInfo(_ input: Operations.ReceiveController_getInfo.Input) async throws -> Operations.ReceiveController_getInfo.Output
+    /// Delete receive credential state
+    ///
+    /// Delete state of a receive credential flow.
+    ///
+    ///
+    /// - Remark: HTTP `DELETE /wallets/{walletId}/receive/{state}`.
+    /// - Remark: Generated from `#/paths//wallets/{walletId}/receive/{state}/delete(ReceiveController_deleteOne)`.
+    func ReceiveController_deleteOne(_ input: Operations.ReceiveController_deleteOne.Input) async throws -> Operations.ReceiveController_deleteOne.Output
     /// authorization_code flow Holder Wallet redirect uri 
     ///
     /// `authorization_code` redirect uri that was started via `/receive` endpoint.<br/>
@@ -396,6 +403,13 @@ public protocol APIProtocol: Sendable {
     /// - Remark: HTTP `GET /wallets/{walletId}/send/{state}`.
     /// - Remark: Generated from `#/paths//wallets/{walletId}/send/{state}/get(SendController_findOne)`.
     func SendController_findOne(_ input: Operations.SendController_findOne.Input) async throws -> Operations.SendController_findOne.Output
+    /// Delete Verifiable Presentation State by ID
+    ///
+    /// Delete state of a presentation flow
+    ///
+    /// - Remark: HTTP `DELETE /wallets/{walletId}/send/{state}`.
+    /// - Remark: Generated from `#/paths//wallets/{walletId}/send/{state}/delete(SendController_deleteOne)`.
+    func SendController_deleteOne(_ input: Operations.SendController_deleteOne.Input) async throws -> Operations.SendController_deleteOne.Output
     /// Import credential
     ///
     /// Import an existing credential from a known format into a Wallet.
@@ -429,6 +443,7 @@ public protocol APIProtocol: Sendable {
     /// Patches credential stored inside a Wallet.
     ///
     /// Used to update `did` and `kid` fields in the meta data of the credential. Note that the `did` and `kid` need to reference an existing DID and Key Id.
+    /// This is used to associate an (existing) Key and/or DID controlled by the wallet with the credential to make it easier to reference that Key and/or DID when presenting credentials for example.
     ///
     ///
     /// - Remark: HTTP `PATCH /wallets/{walletId}/credentials/{vcId}`.
@@ -759,8 +774,10 @@ extension APIProtocol {
     ///
     /// Key binding is performed by providing either
     ///
-    /// - `kid`: Public key is presented.
-    /// - `did`: DID is presented referencing one of the keys contained in the `verificationMethod` section of the DID document.
+    /// - `kid`: Public key is presented. Should be used when credential format is `vc+sd-jwt`.
+    /// - `did`: DID is presented referencing one of the keys contained in the `verificationMethod` section of the DID document. Should be used when credential format is `jwt_vc_json`.
+    ///
+    /// Only one of the `kid` or `did` parameters must be present during the request.
     ///
     /// Both methods involve the wallet presenting key proof to the issuer to ensure control over cryptographic key material.
     ///
@@ -792,18 +809,31 @@ extension APIProtocol {
             body: body
         ))
     }
-    /// Get receive credential state
-    ///
-    /// Get the current state of a receive credential flow.
-    ///
+    /// Get credential receive state
     ///
     /// - Remark: HTTP `GET /wallets/{walletId}/receive/{state}`.
-    /// - Remark: Generated from `#/paths//wallets/{walletId}/receive/{state}/get(ReceiveController_findOne)`.
-    public func ReceiveController_findOne(
-        path: Operations.ReceiveController_findOne.Input.Path,
-        headers: Operations.ReceiveController_findOne.Input.Headers = .init()
-    ) async throws -> Operations.ReceiveController_findOne.Output {
-        try await ReceiveController_findOne(Operations.ReceiveController_findOne.Input(
+    /// - Remark: Generated from `#/paths//wallets/{walletId}/receive/{state}/get(ReceiveController_getInfo)`.
+    public func ReceiveController_getInfo(
+        path: Operations.ReceiveController_getInfo.Input.Path,
+        headers: Operations.ReceiveController_getInfo.Input.Headers = .init()
+    ) async throws -> Operations.ReceiveController_getInfo.Output {
+        try await ReceiveController_getInfo(Operations.ReceiveController_getInfo.Input(
+            path: path,
+            headers: headers
+        ))
+    }
+    /// Delete receive credential state
+    ///
+    /// Delete state of a receive credential flow.
+    ///
+    ///
+    /// - Remark: HTTP `DELETE /wallets/{walletId}/receive/{state}`.
+    /// - Remark: Generated from `#/paths//wallets/{walletId}/receive/{state}/delete(ReceiveController_deleteOne)`.
+    public func ReceiveController_deleteOne(
+        path: Operations.ReceiveController_deleteOne.Input.Path,
+        headers: Operations.ReceiveController_deleteOne.Input.Headers = .init()
+    ) async throws -> Operations.ReceiveController_deleteOne.Output {
+        try await ReceiveController_deleteOne(Operations.ReceiveController_deleteOne.Input(
             path: path,
             headers: headers
         ))
@@ -817,8 +847,8 @@ extension APIProtocol {
     ///
     /// - Remark: HTTP `GET /wallets/receive/callback`.
     /// - Remark: Generated from `#/paths//wallets/receive/callback/get(ReceiveController_callback)`.
-    public func ReceiveController_callback() async throws -> Operations.ReceiveController_callback.Output {
-        try await ReceiveController_callback(Operations.ReceiveController_callback.Input())
+    public func ReceiveController_callback(query: Operations.ReceiveController_callback.Input.Query = .init()) async throws -> Operations.ReceiveController_callback.Output {
+        try await ReceiveController_callback(Operations.ReceiveController_callback.Input(query: query))
     }
     /// Get presentation states
     ///
@@ -1035,6 +1065,21 @@ extension APIProtocol {
             headers: headers
         ))
     }
+    /// Delete Verifiable Presentation State by ID
+    ///
+    /// Delete state of a presentation flow
+    ///
+    /// - Remark: HTTP `DELETE /wallets/{walletId}/send/{state}`.
+    /// - Remark: Generated from `#/paths//wallets/{walletId}/send/{state}/delete(SendController_deleteOne)`.
+    public func SendController_deleteOne(
+        path: Operations.SendController_deleteOne.Input.Path,
+        headers: Operations.SendController_deleteOne.Input.Headers = .init()
+    ) async throws -> Operations.SendController_deleteOne.Output {
+        try await SendController_deleteOne(Operations.SendController_deleteOne.Input(
+            path: path,
+            headers: headers
+        ))
+    }
     /// Import credential
     ///
     /// Import an existing credential from a known format into a Wallet.
@@ -1096,6 +1141,7 @@ extension APIProtocol {
     /// Patches credential stored inside a Wallet.
     ///
     /// Used to update `did` and `kid` fields in the meta data of the credential. Note that the `did` and `kid` need to reference an existing DID and Key Id.
+    /// This is used to associate an (existing) Key and/or DID controlled by the wallet with the credential to make it easier to reference that Key and/or DID when presenting credentials for example.
     ///
     ///
     /// - Remark: HTTP `PATCH /wallets/{walletId}/credentials/{vcId}`.
@@ -1242,56 +1288,42 @@ public enum Components {
         }
         /// - Remark: Generated from `#/components/schemas/ClaimObject`.
         public struct ClaimObject: Codable, Hashable, Sendable {
-            /// - Remark: Generated from `#/components/schemas/ClaimObject/display`.
-            public var display: [Components.Schemas.DisplayClaimObject]?
-            /// - Remark: Generated from `#/components/schemas/ClaimObject/mandatory`.
-            public var mandatory: Swift.Bool?
+            /// - Remark: Generated from `#/components/schemas/ClaimObject/additionalProperties`.
+            public struct additionalPropertiesPayload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/ClaimObject/additionalProperties/display`.
+                public var display: [Components.Schemas.DisplayClaimObject]?
+                /// - Remark: Generated from `#/components/schemas/ClaimObject/additionalProperties/mandatory`.
+                public var mandatory: Swift.Bool?
+                /// Creates a new `additionalPropertiesPayload`.
+                ///
+                /// - Parameters:
+                ///   - display:
+                ///   - mandatory:
+                public init(
+                    display: [Components.Schemas.DisplayClaimObject]? = nil,
+                    mandatory: Swift.Bool? = nil
+                ) {
+                    self.display = display
+                    self.mandatory = mandatory
+                }
+                public enum CodingKeys: String, CodingKey {
+                    case display
+                    case mandatory
+                }
+            }
             /// A container of undocumented properties.
-            public var additionalProperties: OpenAPIRuntime.OpenAPIObjectContainer
+            public var additionalProperties: [String: Components.Schemas.ClaimObject.additionalPropertiesPayload]
             /// Creates a new `ClaimObject`.
             ///
             /// - Parameters:
-            ///   - display:
-            ///   - mandatory:
             ///   - additionalProperties: A container of undocumented properties.
-            public init(
-                display: [Components.Schemas.DisplayClaimObject]? = nil,
-                mandatory: Swift.Bool? = nil,
-                additionalProperties: OpenAPIRuntime.OpenAPIObjectContainer = .init()
-            ) {
-                self.display = display
-                self.mandatory = mandatory
+            public init(additionalProperties: [String: Components.Schemas.ClaimObject.additionalPropertiesPayload] = .init()) {
                 self.additionalProperties = additionalProperties
             }
-            public enum CodingKeys: String, CodingKey {
-                case display
-                case mandatory
-            }
             public init(from decoder: any Decoder) throws {
-                let container = try decoder.container(keyedBy: CodingKeys.self)
-                display = try container.decodeIfPresent(
-                    [Components.Schemas.DisplayClaimObject].self,
-                    forKey: .display
-                )
-                mandatory = try container.decodeIfPresent(
-                    Swift.Bool.self,
-                    forKey: .mandatory
-                )
-                additionalProperties = try decoder.decodeAdditionalProperties(knownKeys: [
-                    "display",
-                    "mandatory"
-                ])
+                additionalProperties = try decoder.decodeAdditionalProperties(knownKeys: [])
             }
             public func encode(to encoder: any Encoder) throws {
-                var container = encoder.container(keyedBy: CodingKeys.self)
-                try container.encodeIfPresent(
-                    display,
-                    forKey: .display
-                )
-                try container.encodeIfPresent(
-                    mandatory,
-                    forKey: .mandatory
-                )
                 try encoder.encodeAdditionalProperties(additionalProperties)
             }
         }
@@ -1322,6 +1354,47 @@ public enum Components {
                 case api_version
                 case git_commit
                 case name
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/CreateDidError`.
+        public struct CreateDidError: Codable, Hashable, Sendable {
+            /// Unique error identifier
+            ///
+            /// - Remark: Generated from `#/components/schemas/CreateDidError/error`.
+            @frozen public enum errorPayload: String, Codable, Hashable, Sendable {
+                case create_did_error = "create_did_error"
+            }
+            /// Unique error identifier
+            ///
+            /// - Remark: Generated from `#/components/schemas/CreateDidError/error`.
+            public var error: Components.Schemas.CreateDidError.errorPayload?
+            /// Object that may contain more information about the error
+            ///
+            /// - Remark: Generated from `#/components/schemas/CreateDidError/extra_info`.
+            public var extra_info: OpenAPIRuntime.OpenAPIObjectContainer?
+            /// User friendly error message
+            ///
+            /// - Remark: Generated from `#/components/schemas/CreateDidError/message`.
+            public var message: Swift.String?
+            /// Creates a new `CreateDidError`.
+            ///
+            /// - Parameters:
+            ///   - error: Unique error identifier
+            ///   - extra_info: Object that may contain more information about the error
+            ///   - message: User friendly error message
+            public init(
+                error: Components.Schemas.CreateDidError.errorPayload? = nil,
+                extra_info: OpenAPIRuntime.OpenAPIObjectContainer? = nil,
+                message: Swift.String? = nil
+            ) {
+                self.error = error
+                self.extra_info = extra_info
+                self.message = message
+            }
+            public enum CodingKeys: String, CodingKey {
+                case error
+                case extra_info
+                case message
             }
         }
         /// - Remark: Generated from `#/components/schemas/CreateWalletPayloadDto`.
@@ -1878,6 +1951,10 @@ public enum Components {
             }
             /// - Remark: Generated from `#/components/schemas/CredentialReceiveGetAccessTokenResponseModelDto/credential_definition`.
             public var credential_definition: Components.Schemas.CredentialReceiveGetAccessTokenResponseModelDto.credential_definitionPayload?
+            /// Client identifier in OAuth 2.0
+            ///
+            /// - Remark: Generated from `#/components/schemas/CredentialReceiveGetAccessTokenResponseModelDto/client_id`.
+            public var client_id: Swift.String?
             /// - Remark: Generated from `#/components/schemas/CredentialReceiveGetAccessTokenResponseModelDto/refresh_token`.
             public var refresh_token: Swift.String?
             /// - Remark: Generated from `#/components/schemas/CredentialReceiveGetAccessTokenResponseModelDto/state`.
@@ -1890,6 +1967,7 @@ public enum Components {
             ///   - c_nonce: String containing a nonce to be used to create a proof of possession of key material when requesting a Credential
             ///   - c_nonce_expires_in: Number denoting the lifetime in seconds of the c_nonce.
             ///   - credential_definition:
+            ///   - client_id: Client identifier in OAuth 2.0
             ///   - refresh_token:
             ///   - state:
             public init(
@@ -1898,6 +1976,7 @@ public enum Components {
                 c_nonce: Swift.String? = nil,
                 c_nonce_expires_in: Swift.Int? = nil,
                 credential_definition: Components.Schemas.CredentialReceiveGetAccessTokenResponseModelDto.credential_definitionPayload? = nil,
+                client_id: Swift.String? = nil,
                 refresh_token: Swift.String? = nil,
                 state: Swift.String? = nil
             ) {
@@ -1906,6 +1985,7 @@ public enum Components {
                 self.c_nonce = c_nonce
                 self.c_nonce_expires_in = c_nonce_expires_in
                 self.credential_definition = credential_definition
+                self.client_id = client_id
                 self.refresh_token = refresh_token
                 self.state = state
             }
@@ -1915,6 +1995,7 @@ public enum Components {
                 case c_nonce
                 case c_nonce_expires_in
                 case credential_definition
+                case client_id
                 case refresh_token
                 case state
             }
@@ -2161,24 +2242,24 @@ public enum Components {
         }
         /// - Remark: Generated from `#/components/schemas/CredentialReceiveStatesModelDto`.
         public struct CredentialReceiveStatesModelDto: Codable, Hashable, Sendable {
-            /// - Remark: Generated from `#/components/schemas/CredentialReceiveStatesModelDto/issuance_states`.
-            public var issuance_states: [Components.Schemas.CredentialReceiveStateModelDto]?
+            /// - Remark: Generated from `#/components/schemas/CredentialReceiveStatesModelDto/states`.
+            public var states: [Components.Schemas.CredentialReceiveStateModelDto]
             /// - Remark: Generated from `#/components/schemas/CredentialReceiveStatesModelDto/meta`.
             public var meta: Components.Schemas.Meta
             /// Creates a new `CredentialReceiveStatesModelDto`.
             ///
             /// - Parameters:
-            ///   - issuance_states:
+            ///   - states:
             ///   - meta:
             public init(
-                issuance_states: [Components.Schemas.CredentialReceiveStateModelDto]? = nil,
+                states: [Components.Schemas.CredentialReceiveStateModelDto],
                 meta: Components.Schemas.Meta
             ) {
-                self.issuance_states = issuance_states
+                self.states = states
                 self.meta = meta
             }
             public enum CodingKeys: String, CodingKey {
-                case issuance_states
+                case states
                 case meta
             }
         }
@@ -2198,10 +2279,43 @@ public enum Components {
             ///
             /// - Remark: Generated from `#/components/schemas/CredentialReceiveStateModelDto/c_nonce_expires_in`.
             public var c_nonce_expires_in: Swift.Int?
-            /// Contains issued Credential. MUST be present when transaction_id is not returned. MAY be a string or an object, depending on the Credential format. See Appendix E for the Credential format specific encoding requirements.
+            /// Client identifier in OAuth 2.0
             ///
-            /// - Remark: Generated from `#/components/schemas/CredentialReceiveStateModelDto/credential`.
-            public var credential: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/CredentialReceiveStateModelDto/client_id`.
+            public var client_id: Swift.String?
+            /// Id under which the credential is stored in the wallet
+            ///
+            /// - Remark: Generated from `#/components/schemas/CredentialReceiveStateModelDto/credential_id`.
+            public var credential_id: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/CredentialReceiveStateModelDto/credentials_ids`.
+            public var credentials_ids: [Swift.String]?
+            /// - Remark: Generated from `#/components/schemas/CredentialReceiveStateModelDto/proof`.
+            public struct proofPayload: Codable, Hashable, Sendable {
+                /// - Remark: Generated from `#/components/schemas/CredentialReceiveStateModelDto/proof/proof_type`.
+                public var proof_type: Swift.String?
+                /// Compact JWT of proof JWT used to issue the credential
+                ///
+                /// - Remark: Generated from `#/components/schemas/CredentialReceiveStateModelDto/proof/jwt`.
+                public var jwt: Swift.String?
+                /// Creates a new `proofPayload`.
+                ///
+                /// - Parameters:
+                ///   - proof_type:
+                ///   - jwt: Compact JWT of proof JWT used to issue the credential
+                public init(
+                    proof_type: Swift.String? = nil,
+                    jwt: Swift.String? = nil
+                ) {
+                    self.proof_type = proof_type
+                    self.jwt = jwt
+                }
+                public enum CodingKeys: String, CodingKey {
+                    case proof_type
+                    case jwt
+                }
+            }
+            /// - Remark: Generated from `#/components/schemas/CredentialReceiveStateModelDto/proof`.
+            public var proof: Components.Schemas.CredentialReceiveStateModelDto.proofPayload?
             /// - Remark: Generated from `#/components/schemas/CredentialReceiveStateModelDto/credential_definition`.
             @frozen public enum credential_definitionPayload: Codable, Hashable, Sendable {
                 /// - Remark: Generated from `#/components/schemas/CredentialReceiveStateModelDto/credential_definition/case1`.
@@ -2269,10 +2383,10 @@ public enum Components {
             }
             /// - Remark: Generated from `#/components/schemas/CredentialReceiveStateModelDto/credential_definition`.
             public var credential_definition: Components.Schemas.CredentialReceiveStateModelDto.credential_definitionPayload?
-            /// Id under which the credential is stored in the wallet
+            /// Credential Issuer credential endpoint called
             ///
-            /// - Remark: Generated from `#/components/schemas/CredentialReceiveStateModelDto/credential_id`.
-            public var credential_id: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/CredentialReceiveStateModelDto/credential_endpoint`.
+            public var credential_endpoint: Swift.String?
             /// - Remark: Generated from `#/components/schemas/CredentialReceiveStateModelDto/credential_offer`.
             public var credential_offer: Components.Schemas.CredentialOfferDto?
             /// - Remark: Generated from `#/components/schemas/CredentialReceiveStateModelDto/credential_offer_uri`.
@@ -2302,6 +2416,10 @@ public enum Components {
             public var response_type: Components.Schemas.CredentialReceiveStateModelDto.response_typePayload?
             /// - Remark: Generated from `#/components/schemas/CredentialReceiveStateModelDto/state`.
             public var state: Swift.String?
+            /// Credential Issuer or Authorization Server token endpoint called
+            ///
+            /// - Remark: Generated from `#/components/schemas/CredentialReceiveStateModelDto/token_endpoint`.
+            public var token_endpoint: Swift.String?
             /// A string identifying a Deferred Issuance transaction. This claim is contained in the response if the Credential Issuer was unable to immediately issue the Credential
             ///
             /// - Remark: Generated from `#/components/schemas/CredentialReceiveStateModelDto/transaction_id`.
@@ -2313,9 +2431,12 @@ public enum Components {
             ///   - authorization_url: The URL to open in a browser in order to complete the authorization with the Authorization Server.
             ///   - c_nonce: String containing a nonce to be used to create a proof of possession of key material when requesting a Credential
             ///   - c_nonce_expires_in: Number denoting the lifetime in seconds of the c_nonce.
-            ///   - credential: Contains issued Credential. MUST be present when transaction_id is not returned. MAY be a string or an object, depending on the Credential format. See Appendix E for the Credential format specific encoding requirements.
-            ///   - credential_definition:
+            ///   - client_id: Client identifier in OAuth 2.0
             ///   - credential_id: Id under which the credential is stored in the wallet
+            ///   - credentials_ids:
+            ///   - proof:
+            ///   - credential_definition:
+            ///   - credential_endpoint: Credential Issuer credential endpoint called
             ///   - credential_offer:
             ///   - credential_offer_uri:
             ///   - did:
@@ -2324,15 +2445,19 @@ public enum Components {
             ///   - refresh_token:
             ///   - response_type: This value is always `code`
             ///   - state:
+            ///   - token_endpoint: Credential Issuer or Authorization Server token endpoint called
             ///   - transaction_id: A string identifying a Deferred Issuance transaction. This claim is contained in the response if the Credential Issuer was unable to immediately issue the Credential
             public init(
                 access_token: Swift.String? = nil,
                 authorization_url: Swift.String? = nil,
                 c_nonce: Swift.String? = nil,
                 c_nonce_expires_in: Swift.Int? = nil,
-                credential: Swift.String? = nil,
-                credential_definition: Components.Schemas.CredentialReceiveStateModelDto.credential_definitionPayload? = nil,
+                client_id: Swift.String? = nil,
                 credential_id: Swift.String? = nil,
+                credentials_ids: [Swift.String]? = nil,
+                proof: Components.Schemas.CredentialReceiveStateModelDto.proofPayload? = nil,
+                credential_definition: Components.Schemas.CredentialReceiveStateModelDto.credential_definitionPayload? = nil,
+                credential_endpoint: Swift.String? = nil,
                 credential_offer: Components.Schemas.CredentialOfferDto? = nil,
                 credential_offer_uri: Swift.String? = nil,
                 did: Swift.String? = nil,
@@ -2341,15 +2466,19 @@ public enum Components {
                 refresh_token: Swift.String? = nil,
                 response_type: Components.Schemas.CredentialReceiveStateModelDto.response_typePayload? = nil,
                 state: Swift.String? = nil,
+                token_endpoint: Swift.String? = nil,
                 transaction_id: Swift.String? = nil
             ) {
                 self.access_token = access_token
                 self.authorization_url = authorization_url
                 self.c_nonce = c_nonce
                 self.c_nonce_expires_in = c_nonce_expires_in
-                self.credential = credential
-                self.credential_definition = credential_definition
+                self.client_id = client_id
                 self.credential_id = credential_id
+                self.credentials_ids = credentials_ids
+                self.proof = proof
+                self.credential_definition = credential_definition
+                self.credential_endpoint = credential_endpoint
                 self.credential_offer = credential_offer
                 self.credential_offer_uri = credential_offer_uri
                 self.did = did
@@ -2358,6 +2487,7 @@ public enum Components {
                 self.refresh_token = refresh_token
                 self.response_type = response_type
                 self.state = state
+                self.token_endpoint = token_endpoint
                 self.transaction_id = transaction_id
             }
             public enum CodingKeys: String, CodingKey {
@@ -2365,9 +2495,12 @@ public enum Components {
                 case authorization_url
                 case c_nonce
                 case c_nonce_expires_in
-                case credential
-                case credential_definition
+                case client_id
                 case credential_id
+                case credentials_ids
+                case proof
+                case credential_definition
+                case credential_endpoint
                 case credential_offer
                 case credential_offer_uri
                 case did
@@ -2376,6 +2509,7 @@ public enum Components {
                 case refresh_token
                 case response_type
                 case state
+                case token_endpoint
                 case transaction_id
             }
         }
@@ -2448,7 +2582,15 @@ public enum Components {
                 ///
                 ///
                 /// - Remark: Generated from `#/components/schemas/CredentialResponseModelDto/meta/display`.
-                public var display: Components.Schemas.DisplayObject?
+                public var display: Components.Schemas.CredentialDisplayObject?
+                /// Array of objects, where each object contains issuers name for a different locale.
+                ///
+                /// Snapshot from Credential Issuer Metadata taken at the time of issuance.
+                /// See section 11.2.3 in OpenID for Verifiable Credential Issuance for more information.
+                ///
+                ///
+                /// - Remark: Generated from `#/components/schemas/CredentialResponseModelDto/meta/issuer_display`.
+                public var issuer_display: Components.Schemas.IssuerDisplayObject?
                 /// An ID for a key managed by the wallet used to perform credential key binding.
                 ///
                 /// - Remark: Generated from `#/components/schemas/CredentialResponseModelDto/meta/kid`.
@@ -2468,13 +2610,15 @@ public enum Components {
                 ///   - credential_definition: Object containing the detailed description of the credential type of the W3C VC Data Model.
                 ///   - did: A DID managed by the wallet used to perform credential key binding.
                 ///   - display: Array of objects, where each object contains information on how to display the credential.
+                ///   - issuer_display: Array of objects, where each object contains issuers name for a different locale.
                 ///   - kid: An ID for a key managed by the wallet used to perform credential key binding.
                 ///   - vct: The Credential type of the SD-JWT VC.
                 public init(
                     claims: Components.Schemas.ClaimObject? = nil,
                     credential_definition: Components.Schemas.CredentialDefinition? = nil,
                     did: Swift.String? = nil,
-                    display: Components.Schemas.DisplayObject? = nil,
+                    display: Components.Schemas.CredentialDisplayObject? = nil,
+                    issuer_display: Components.Schemas.IssuerDisplayObject? = nil,
                     kid: Swift.String? = nil,
                     vct: Swift.String? = nil
                 ) {
@@ -2482,6 +2626,7 @@ public enum Components {
                     self.credential_definition = credential_definition
                     self.did = did
                     self.display = display
+                    self.issuer_display = issuer_display
                     self.kid = kid
                     self.vct = vct
                 }
@@ -2490,6 +2635,7 @@ public enum Components {
                     case credential_definition
                     case did
                     case display
+                    case issuer_display
                     case kid
                     case vct
                 }
@@ -2556,8 +2702,8 @@ public enum Components {
         }
         /// - Remark: Generated from `#/components/schemas/CredentialVerificationResponseDto`.
         public struct CredentialVerificationResponseDto: Codable, Hashable, Sendable {
-            /// - Remark: Generated from `#/components/schemas/CredentialVerificationResponseDto/checks`.
-            @frozen public enum checksPayload: String, Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/CredentialVerificationResponseDto/checksPayload`.
+            @frozen public enum checksPayloadPayload: String, Codable, Hashable, Sendable {
                 case format = "format"
                 case signature = "signature"
                 case expiration = "expiration"
@@ -2566,13 +2712,15 @@ public enum Components {
                 case revocation_status = "revocation_status"
             }
             /// - Remark: Generated from `#/components/schemas/CredentialVerificationResponseDto/checks`.
+            public typealias checksPayload = [Components.Schemas.CredentialVerificationResponseDto.checksPayloadPayload]
+            /// - Remark: Generated from `#/components/schemas/CredentialVerificationResponseDto/checks`.
             public var checks: Components.Schemas.CredentialVerificationResponseDto.checksPayload
             /// - Remark: Generated from `#/components/schemas/CredentialVerificationResponseDto/errors`.
-            public var errors: Components.Schemas.CredentialVerificationCheckModelDto
+            public var errors: [Components.Schemas.CredentialVerificationCheckModelDto]
             /// - Remark: Generated from `#/components/schemas/CredentialVerificationResponseDto/id`.
             public var id: Swift.String
             /// - Remark: Generated from `#/components/schemas/CredentialVerificationResponseDto/warnings`.
-            public var warnings: Components.Schemas.CredentialVerificationCheckModelDto
+            public var warnings: [Components.Schemas.CredentialVerificationCheckModelDto]
             /// Creates a new `CredentialVerificationResponseDto`.
             ///
             /// - Parameters:
@@ -2582,9 +2730,9 @@ public enum Components {
             ///   - warnings:
             public init(
                 checks: Components.Schemas.CredentialVerificationResponseDto.checksPayload,
-                errors: Components.Schemas.CredentialVerificationCheckModelDto,
+                errors: [Components.Schemas.CredentialVerificationCheckModelDto],
                 id: Swift.String,
-                warnings: Components.Schemas.CredentialVerificationCheckModelDto
+                warnings: [Components.Schemas.CredentialVerificationCheckModelDto]
             ) {
                 self.checks = checks
                 self.errors = errors
@@ -2603,28 +2751,22 @@ public enum Components {
             /// - Remark: Generated from `#/components/schemas/CredentialsResponseDto/credentials`.
             public var credentials: [Components.Schemas.CredentialResponseModelDto]
             /// - Remark: Generated from `#/components/schemas/CredentialsResponseDto/meta`.
-            public var meta: OpenAPIRuntime.OpenAPIObjectContainer
-            /// - Remark: Generated from `#/components/schemas/CredentialsResponseDto/next_page_after`.
-            public var next_page_after: Swift.String
+            public var meta: Components.Schemas.Meta
             /// Creates a new `CredentialsResponseDto`.
             ///
             /// - Parameters:
             ///   - credentials:
             ///   - meta:
-            ///   - next_page_after:
             public init(
                 credentials: [Components.Schemas.CredentialResponseModelDto],
-                meta: OpenAPIRuntime.OpenAPIObjectContainer,
-                next_page_after: Swift.String
+                meta: Components.Schemas.Meta
             ) {
                 self.credentials = credentials
                 self.meta = meta
-                self.next_page_after = next_page_after
             }
             public enum CodingKeys: String, CodingKey {
                 case credentials
                 case meta
-                case next_page_after
             }
         }
         /// - Remark: Generated from `#/components/schemas/Database`.
@@ -2703,6 +2845,47 @@ public enum Components {
                 case message
             }
         }
+        /// - Remark: Generated from `#/components/schemas/DeleteDidError`.
+        public struct DeleteDidError: Codable, Hashable, Sendable {
+            /// Unique error identifier
+            ///
+            /// - Remark: Generated from `#/components/schemas/DeleteDidError/error`.
+            @frozen public enum errorPayload: String, Codable, Hashable, Sendable {
+                case delete_did_error = "delete_did_error"
+            }
+            /// Unique error identifier
+            ///
+            /// - Remark: Generated from `#/components/schemas/DeleteDidError/error`.
+            public var error: Components.Schemas.DeleteDidError.errorPayload?
+            /// Object that may contain more information about the error
+            ///
+            /// - Remark: Generated from `#/components/schemas/DeleteDidError/extra_info`.
+            public var extra_info: OpenAPIRuntime.OpenAPIObjectContainer?
+            /// User friendly error message
+            ///
+            /// - Remark: Generated from `#/components/schemas/DeleteDidError/message`.
+            public var message: Swift.String?
+            /// Creates a new `DeleteDidError`.
+            ///
+            /// - Parameters:
+            ///   - error: Unique error identifier
+            ///   - extra_info: Object that may contain more information about the error
+            ///   - message: User friendly error message
+            public init(
+                error: Components.Schemas.DeleteDidError.errorPayload? = nil,
+                extra_info: OpenAPIRuntime.OpenAPIObjectContainer? = nil,
+                message: Swift.String? = nil
+            ) {
+                self.error = error
+                self.extra_info = extra_info
+                self.message = message
+            }
+            public enum CodingKeys: String, CodingKey {
+                case error
+                case extra_info
+                case message
+            }
+        }
         /// - Remark: Generated from `#/components/schemas/DeleteWalletError`.
         public struct DeleteWalletError: Codable, Hashable, Sendable {
             /// Unique error identifier
@@ -2731,6 +2914,47 @@ public enum Components {
             ///   - message: User friendly error message
             public init(
                 error: Components.Schemas.DeleteWalletError.errorPayload,
+                extra_info: OpenAPIRuntime.OpenAPIObjectContainer,
+                message: Swift.String
+            ) {
+                self.error = error
+                self.extra_info = extra_info
+                self.message = message
+            }
+            public enum CodingKeys: String, CodingKey {
+                case error
+                case extra_info
+                case message
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/DidKidAssociationNotFoundError`.
+        public struct DidKidAssociationNotFoundError: Codable, Hashable, Sendable {
+            /// Unique error identifier
+            ///
+            /// - Remark: Generated from `#/components/schemas/DidKidAssociationNotFoundError/error`.
+            @frozen public enum errorPayload: String, Codable, Hashable, Sendable {
+                case did_not_found = "did_not_found"
+            }
+            /// Unique error identifier
+            ///
+            /// - Remark: Generated from `#/components/schemas/DidKidAssociationNotFoundError/error`.
+            public var error: Components.Schemas.DidKidAssociationNotFoundError.errorPayload
+            /// Object that may contain more information about the error
+            ///
+            /// - Remark: Generated from `#/components/schemas/DidKidAssociationNotFoundError/extra_info`.
+            public var extra_info: OpenAPIRuntime.OpenAPIObjectContainer
+            /// User friendly error message
+            ///
+            /// - Remark: Generated from `#/components/schemas/DidKidAssociationNotFoundError/message`.
+            public var message: Swift.String
+            /// Creates a new `DidKidAssociationNotFoundError`.
+            ///
+            /// - Parameters:
+            ///   - error: Unique error identifier
+            ///   - extra_info: Object that may contain more information about the error
+            ///   - message: User friendly error message
+            public init(
+                error: Components.Schemas.DidKidAssociationNotFoundError.errorPayload,
                 extra_info: OpenAPIRuntime.OpenAPIObjectContainer,
                 message: Swift.String
             ) {
@@ -2808,17 +3032,46 @@ public enum Components {
                 case name
             }
         }
-        /// - Remark: Generated from `#/components/schemas/DisplayObject`.
-        public struct DisplayObject: Codable, Hashable, Sendable {
-            /// - Remark: Generated from `#/components/schemas/DisplayObject/background_color`.
-            public var background_color: Swift.String?
-            /// - Remark: Generated from `#/components/schemas/DisplayObject/locale`.
+        /// - Remark: Generated from `#/components/schemas/IssuerDisplayObject`.
+        public struct IssuerDisplayObjectPayload: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/IssuerDisplayObject/locale`.
             public var locale: Swift.String?
-            /// - Remark: Generated from `#/components/schemas/DisplayObject/logo`.
+            /// - Remark: Generated from `#/components/schemas/IssuerDisplayObject/name`.
+            public var name: Swift.String?
+            /// Creates a new `IssuerDisplayObjectPayload`.
+            ///
+            /// - Parameters:
+            ///   - locale:
+            ///   - name:
+            public init(
+                locale: Swift.String? = nil,
+                name: Swift.String? = nil
+            ) {
+                self.locale = locale
+                self.name = name
+            }
+            public enum CodingKeys: String, CodingKey {
+                case locale
+                case name
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/IssuerDisplayObject`.
+        public typealias IssuerDisplayObject = [Components.Schemas.IssuerDisplayObjectPayload]
+        /// - Remark: Generated from `#/components/schemas/CredentialDisplayObject`.
+        public struct CredentialDisplayObjectPayload: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/CredentialDisplayObject/name`.
+            public var name: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/CredentialDisplayObject/locale`.
+            public var locale: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/CredentialDisplayObject/background_color`.
+            public var background_color: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/CredentialDisplayObject/text_color`.
+            public var text_color: Swift.String?
+            /// - Remark: Generated from `#/components/schemas/CredentialDisplayObject/logo`.
             public struct logoPayload: Codable, Hashable, Sendable {
-                /// - Remark: Generated from `#/components/schemas/DisplayObject/logo/alt_text`.
+                /// - Remark: Generated from `#/components/schemas/CredentialDisplayObject/logo/alt_text`.
                 public var alt_text: Swift.String?
-                /// - Remark: Generated from `#/components/schemas/DisplayObject/logo/url`.
+                /// - Remark: Generated from `#/components/schemas/CredentialDisplayObject/logo/url`.
                 public var url: Swift.String?
                 /// Creates a new `logoPayload`.
                 ///
@@ -2837,41 +3090,39 @@ public enum Components {
                     case url
                 }
             }
-            /// - Remark: Generated from `#/components/schemas/DisplayObject/logo`.
-            public var logo: Components.Schemas.DisplayObject.logoPayload?
-            /// - Remark: Generated from `#/components/schemas/DisplayObject/name`.
-            public var name: Swift.String?
-            /// - Remark: Generated from `#/components/schemas/DisplayObject/text_color`.
-            public var text_color: Swift.String?
-            /// Creates a new `DisplayObject`.
+            /// - Remark: Generated from `#/components/schemas/CredentialDisplayObject/logo`.
+            public var logo: Components.Schemas.CredentialDisplayObjectPayload.logoPayload?
+            /// Creates a new `CredentialDisplayObjectPayload`.
             ///
             /// - Parameters:
-            ///   - background_color:
-            ///   - locale:
-            ///   - logo:
             ///   - name:
+            ///   - locale:
+            ///   - background_color:
             ///   - text_color:
+            ///   - logo:
             public init(
-                background_color: Swift.String? = nil,
-                locale: Swift.String? = nil,
-                logo: Components.Schemas.DisplayObject.logoPayload? = nil,
                 name: Swift.String? = nil,
-                text_color: Swift.String? = nil
+                locale: Swift.String? = nil,
+                background_color: Swift.String? = nil,
+                text_color: Swift.String? = nil,
+                logo: Components.Schemas.CredentialDisplayObjectPayload.logoPayload? = nil
             ) {
-                self.background_color = background_color
-                self.locale = locale
-                self.logo = logo
                 self.name = name
+                self.locale = locale
+                self.background_color = background_color
                 self.text_color = text_color
+                self.logo = logo
             }
             public enum CodingKeys: String, CodingKey {
-                case background_color
-                case locale
-                case logo
                 case name
+                case locale
+                case background_color
                 case text_color
+                case logo
             }
         }
+        /// - Remark: Generated from `#/components/schemas/CredentialDisplayObject`.
+        public typealias CredentialDisplayObject = [Components.Schemas.CredentialDisplayObjectPayload]
         /// - Remark: Generated from `#/components/schemas/GrantDto`.
         public struct GrantDto: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/GrantDto/authorization_code`.
@@ -3220,6 +3471,47 @@ public enum Components {
                 error: Components.Schemas.InternalServerError.errorPayload,
                 extra_info: OpenAPIRuntime.OpenAPIObjectContainer,
                 message: Swift.String
+            ) {
+                self.error = error
+                self.extra_info = extra_info
+                self.message = message
+            }
+            public enum CodingKeys: String, CodingKey {
+                case error
+                case extra_info
+                case message
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/InvalidClaimsToDiscloseError`.
+        public struct InvalidClaimsToDiscloseError: Codable, Hashable, Sendable {
+            /// Unique error identifier
+            ///
+            /// - Remark: Generated from `#/components/schemas/InvalidClaimsToDiscloseError/error`.
+            @frozen public enum errorPayload: String, Codable, Hashable, Sendable {
+                case invalid_claims_to_disclose_error = "invalid_claims_to_disclose_error"
+            }
+            /// Unique error identifier
+            ///
+            /// - Remark: Generated from `#/components/schemas/InvalidClaimsToDiscloseError/error`.
+            public var error: Components.Schemas.InvalidClaimsToDiscloseError.errorPayload?
+            /// Object that may contain more information about the error
+            ///
+            /// - Remark: Generated from `#/components/schemas/InvalidClaimsToDiscloseError/extra_info`.
+            public var extra_info: OpenAPIRuntime.OpenAPIObjectContainer?
+            /// User friendly error message
+            ///
+            /// - Remark: Generated from `#/components/schemas/InvalidClaimsToDiscloseError/message`.
+            public var message: Swift.String?
+            /// Creates a new `InvalidClaimsToDiscloseError`.
+            ///
+            /// - Parameters:
+            ///   - error: Unique error identifier
+            ///   - extra_info: Object that may contain more information about the error
+            ///   - message: User friendly error message
+            public init(
+                error: Components.Schemas.InvalidClaimsToDiscloseError.errorPayload? = nil,
+                extra_info: OpenAPIRuntime.OpenAPIObjectContainer? = nil,
+                message: Swift.String? = nil
             ) {
                 self.error = error
                 self.extra_info = extra_info
@@ -3656,6 +3948,8 @@ public enum Components {
         }
         /// - Remark: Generated from `#/components/schemas/JSONWebKeyPub`.
         public struct JSONWebKeyPub: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/JSONWebKeyPub/alg`.
+            public var alg: Swift.String?
             /// - Remark: Generated from `#/components/schemas/JSONWebKeyPub/crv`.
             public var crv: Swift.String?
             /// - Remark: Generated from `#/components/schemas/JSONWebKeyPub/e`.
@@ -3675,6 +3969,7 @@ public enum Components {
             /// Creates a new `JSONWebKeyPub`.
             ///
             /// - Parameters:
+            ///   - alg:
             ///   - crv:
             ///   - e:
             ///   - k:
@@ -3684,6 +3979,7 @@ public enum Components {
             ///   - x:
             ///   - y:
             public init(
+                alg: Swift.String? = nil,
                 crv: Swift.String? = nil,
                 e: Swift.String? = nil,
                 k: Swift.String? = nil,
@@ -3693,6 +3989,7 @@ public enum Components {
                 x: Swift.String? = nil,
                 y: Swift.String? = nil
             ) {
+                self.alg = alg
                 self.crv = crv
                 self.e = e
                 self.k = k
@@ -3703,6 +4000,7 @@ public enum Components {
                 self.y = y
             }
             public enum CodingKeys: String, CodingKey {
+                case alg
                 case crv
                 case e
                 case k
@@ -3959,6 +4257,88 @@ public enum Components {
                 case message
             }
         }
+        /// - Remark: Generated from `#/components/schemas/NotImplementedError`.
+        public struct NotImplementedError: Codable, Hashable, Sendable {
+            /// Unique error identifier
+            ///
+            /// - Remark: Generated from `#/components/schemas/NotImplementedError/error`.
+            @frozen public enum errorPayload: String, Codable, Hashable, Sendable {
+                case not_implemented = "not_implemented"
+            }
+            /// Unique error identifier
+            ///
+            /// - Remark: Generated from `#/components/schemas/NotImplementedError/error`.
+            public var error: Components.Schemas.NotImplementedError.errorPayload
+            /// Object that may contain more information about the error
+            ///
+            /// - Remark: Generated from `#/components/schemas/NotImplementedError/extra_info`.
+            public var extra_info: OpenAPIRuntime.OpenAPIObjectContainer
+            /// User friendly error message
+            ///
+            /// - Remark: Generated from `#/components/schemas/NotImplementedError/message`.
+            public var message: Swift.String
+            /// Creates a new `NotImplementedError`.
+            ///
+            /// - Parameters:
+            ///   - error: Unique error identifier
+            ///   - extra_info: Object that may contain more information about the error
+            ///   - message: User friendly error message
+            public init(
+                error: Components.Schemas.NotImplementedError.errorPayload,
+                extra_info: OpenAPIRuntime.OpenAPIObjectContainer,
+                message: Swift.String
+            ) {
+                self.error = error
+                self.extra_info = extra_info
+                self.message = message
+            }
+            public enum CodingKeys: String, CodingKey {
+                case error
+                case extra_info
+                case message
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/PatchCredentialError`.
+        public struct PatchCredentialError: Codable, Hashable, Sendable {
+            /// Unique error identifier
+            ///
+            /// - Remark: Generated from `#/components/schemas/PatchCredentialError/error`.
+            @frozen public enum errorPayload: String, Codable, Hashable, Sendable {
+                case patch_credential_error = "patch_credential_error"
+            }
+            /// Unique error identifier
+            ///
+            /// - Remark: Generated from `#/components/schemas/PatchCredentialError/error`.
+            public var error: Components.Schemas.PatchCredentialError.errorPayload
+            /// Object that may contain more information about the error
+            ///
+            /// - Remark: Generated from `#/components/schemas/PatchCredentialError/extra_info`.
+            public var extra_info: OpenAPIRuntime.OpenAPIObjectContainer
+            /// User friendly error message
+            ///
+            /// - Remark: Generated from `#/components/schemas/PatchCredentialError/message`.
+            public var message: Swift.String
+            /// Creates a new `PatchCredentialError`.
+            ///
+            /// - Parameters:
+            ///   - error: Unique error identifier
+            ///   - extra_info: Object that may contain more information about the error
+            ///   - message: User friendly error message
+            public init(
+                error: Components.Schemas.PatchCredentialError.errorPayload,
+                extra_info: OpenAPIRuntime.OpenAPIObjectContainer,
+                message: Swift.String
+            ) {
+                self.error = error
+                self.extra_info = extra_info
+                self.message = message
+            }
+            public enum CodingKeys: String, CodingKey {
+                case error
+                case extra_info
+                case message
+            }
+        }
         /// - Remark: Generated from `#/components/schemas/PresentationDefinition`.
         public struct PresentationDefinition: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/PresentationDefinition/id`.
@@ -4023,7 +4403,7 @@ public enum Components {
         /// - Remark: Generated from `#/components/schemas/PresentationStatesResponseDto`.
         public struct PresentationStatesResponseDto: Codable, Hashable, Sendable {
             /// - Remark: Generated from `#/components/schemas/PresentationStatesResponseDto/presentation_states`.
-            public var presentation_states: [Components.Schemas.PresentationStateResponseDto]?
+            public var presentation_states: [Components.Schemas.PresentationStateResponseDto]
             /// - Remark: Generated from `#/components/schemas/PresentationStatesResponseDto/meta`.
             public var meta: Components.Schemas.Meta
             /// Creates a new `PresentationStatesResponseDto`.
@@ -4032,7 +4412,7 @@ public enum Components {
             ///   - presentation_states:
             ///   - meta:
             public init(
-                presentation_states: [Components.Schemas.PresentationStateResponseDto]? = nil,
+                presentation_states: [Components.Schemas.PresentationStateResponseDto],
                 meta: Components.Schemas.Meta
             ) {
                 self.presentation_states = presentation_states
@@ -4225,6 +4605,7 @@ public enum Components {
             ///
             /// - Remark: Generated from `#/components/schemas/AuthorizationRequestResponseDto/response_mode`.
             @frozen public enum response_modePayload: String, Codable, Hashable, Sendable {
+                case post = "post"
                 case direct_post = "direct_post"
             }
             /// Parameter to ask the Wallet to send the response to the verifier. Possible values are 'direct_post'
@@ -4235,6 +4616,7 @@ public enum Components {
             ///
             /// - Remark: Generated from `#/components/schemas/AuthorizationRequestResponseDto/response_type`.
             @frozen public enum response_typePayload: String, Codable, Hashable, Sendable {
+                case id_token = "id_token"
                 case vp_token = "vp_token"
                 case vp_token_space_id_token = "vp_token id_token"
             }
@@ -4720,6 +5102,41 @@ public enum Components {
                 case state
             }
         }
+        /// - Remark: Generated from `#/components/schemas/Redis`.
+        public struct Redis: Codable, Hashable, Sendable {
+            /// - Remark: Generated from `#/components/schemas/Redis/host`.
+            public var host: Swift.String
+            /// - Remark: Generated from `#/components/schemas/Redis/port`.
+            public var port: Swift.String
+            /// - Remark: Generated from `#/components/schemas/Redis/db`.
+            public var db: Swift.String
+            /// - Remark: Generated from `#/components/schemas/Redis/tlsEnabled`.
+            public var tlsEnabled: Swift.Bool
+            /// Creates a new `Redis`.
+            ///
+            /// - Parameters:
+            ///   - host:
+            ///   - port:
+            ///   - db:
+            ///   - tlsEnabled:
+            public init(
+                host: Swift.String,
+                port: Swift.String,
+                db: Swift.String,
+                tlsEnabled: Swift.Bool
+            ) {
+                self.host = host
+                self.port = port
+                self.db = db
+                self.tlsEnabled = tlsEnabled
+            }
+            public enum CodingKeys: String, CodingKey {
+                case host
+                case port
+                case db
+                case tlsEnabled
+            }
+        }
         /// - Remark: Generated from `#/components/schemas/RegisterWalletError`.
         public struct RegisterWalletError: Codable, Hashable, Sendable {
             /// Unique error identifier
@@ -4769,6 +5186,8 @@ public enum Components {
             public var appsignal: Components.Schemas.AppSignal
             /// - Remark: Generated from `#/components/schemas/StatusDto/database`.
             public var database: Components.Schemas.Database
+            /// - Remark: Generated from `#/components/schemas/StatusDto/redis`.
+            public var redis: Components.Schemas.Redis
             /// - Remark: Generated from `#/components/schemas/StatusDto/healthCheck`.
             public var healthCheck: Components.Schemas.HealthCheck
             /// Creates a new `StatusDto`.
@@ -4777,22 +5196,26 @@ public enum Components {
             ///   - app:
             ///   - appsignal:
             ///   - database:
+            ///   - redis:
             ///   - healthCheck:
             public init(
                 app: Components.Schemas.App,
                 appsignal: Components.Schemas.AppSignal,
                 database: Components.Schemas.Database,
+                redis: Components.Schemas.Redis,
                 healthCheck: Components.Schemas.HealthCheck
             ) {
                 self.app = app
                 self.appsignal = appsignal
                 self.database = database
+                self.redis = redis
                 self.healthCheck = healthCheck
             }
             public enum CodingKeys: String, CodingKey {
                 case app
                 case appsignal
                 case database
+                case redis
                 case healthCheck
             }
         }
@@ -4883,6 +5306,47 @@ public enum Components {
                 case let .case1(value):
                     try value.encode(to: encoder)
                 }
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/SvxDidCannotBeDeletedError`.
+        public struct SvxDidCannotBeDeletedError: Codable, Hashable, Sendable {
+            /// Unique error identifier
+            ///
+            /// - Remark: Generated from `#/components/schemas/SvxDidCannotBeDeletedError/error`.
+            @frozen public enum errorPayload: String, Codable, Hashable, Sendable {
+                case svx_authentication_did_cannot_be_deleted = "svx_authentication_did_cannot_be_deleted"
+            }
+            /// Unique error identifier
+            ///
+            /// - Remark: Generated from `#/components/schemas/SvxDidCannotBeDeletedError/error`.
+            public var error: Components.Schemas.SvxDidCannotBeDeletedError.errorPayload
+            /// Object that may contain more information about the error
+            ///
+            /// - Remark: Generated from `#/components/schemas/SvxDidCannotBeDeletedError/extra_info`.
+            public var extra_info: OpenAPIRuntime.OpenAPIObjectContainer
+            /// User friendly error message
+            ///
+            /// - Remark: Generated from `#/components/schemas/SvxDidCannotBeDeletedError/message`.
+            public var message: Swift.String
+            /// Creates a new `SvxDidCannotBeDeletedError`.
+            ///
+            /// - Parameters:
+            ///   - error: Unique error identifier
+            ///   - extra_info: Object that may contain more information about the error
+            ///   - message: User friendly error message
+            public init(
+                error: Components.Schemas.SvxDidCannotBeDeletedError.errorPayload,
+                extra_info: OpenAPIRuntime.OpenAPIObjectContainer,
+                message: Swift.String
+            ) {
+                self.error = error
+                self.extra_info = extra_info
+                self.message = message
+            }
+            public enum CodingKeys: String, CodingKey {
+                case error
+                case extra_info
+                case message
             }
         }
         /// - Remark: Generated from `#/components/schemas/VerifyCredentialError`.
@@ -5108,6 +5572,129 @@ public enum Components {
                 case external_reference
                 case id
                 case keys
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/AuthorizationRequestNotFoundError`.
+        public struct AuthorizationRequestNotFoundError: Codable, Hashable, Sendable {
+            /// Unique error identifier
+            ///
+            /// - Remark: Generated from `#/components/schemas/AuthorizationRequestNotFoundError/error`.
+            @frozen public enum errorPayload: String, Codable, Hashable, Sendable {
+                case authorization_request_not_found = "authorization_request_not_found"
+            }
+            /// Unique error identifier
+            ///
+            /// - Remark: Generated from `#/components/schemas/AuthorizationRequestNotFoundError/error`.
+            public var error: Components.Schemas.AuthorizationRequestNotFoundError.errorPayload
+            /// Object that may contain more information about the error
+            ///
+            /// - Remark: Generated from `#/components/schemas/AuthorizationRequestNotFoundError/extra_info`.
+            public var extra_info: OpenAPIRuntime.OpenAPIObjectContainer
+            /// User friendly error message
+            ///
+            /// - Remark: Generated from `#/components/schemas/AuthorizationRequestNotFoundError/message`.
+            public var message: Swift.String
+            /// Creates a new `AuthorizationRequestNotFoundError`.
+            ///
+            /// - Parameters:
+            ///   - error: Unique error identifier
+            ///   - extra_info: Object that may contain more information about the error
+            ///   - message: User friendly error message
+            public init(
+                error: Components.Schemas.AuthorizationRequestNotFoundError.errorPayload,
+                extra_info: OpenAPIRuntime.OpenAPIObjectContainer,
+                message: Swift.String
+            ) {
+                self.error = error
+                self.extra_info = extra_info
+                self.message = message
+            }
+            public enum CodingKeys: String, CodingKey {
+                case error
+                case extra_info
+                case message
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/DeleteReceiveStateError`.
+        public struct DeleteReceiveStateError: Codable, Hashable, Sendable {
+            /// Unique error identifier
+            ///
+            /// - Remark: Generated from `#/components/schemas/DeleteReceiveStateError/error`.
+            @frozen public enum errorPayload: String, Codable, Hashable, Sendable {
+                case delete_presentation_state_error = "delete_presentation_state_error"
+            }
+            /// Unique error identifier
+            ///
+            /// - Remark: Generated from `#/components/schemas/DeleteReceiveStateError/error`.
+            public var error: Components.Schemas.DeleteReceiveStateError.errorPayload
+            /// Object that may contain more information about the error
+            ///
+            /// - Remark: Generated from `#/components/schemas/DeleteReceiveStateError/extra_info`.
+            public var extra_info: OpenAPIRuntime.OpenAPIObjectContainer
+            /// User friendly error message
+            ///
+            /// - Remark: Generated from `#/components/schemas/DeleteReceiveStateError/message`.
+            public var message: Swift.String
+            /// Creates a new `DeleteReceiveStateError`.
+            ///
+            /// - Parameters:
+            ///   - error: Unique error identifier
+            ///   - extra_info: Object that may contain more information about the error
+            ///   - message: User friendly error message
+            public init(
+                error: Components.Schemas.DeleteReceiveStateError.errorPayload,
+                extra_info: OpenAPIRuntime.OpenAPIObjectContainer,
+                message: Swift.String
+            ) {
+                self.error = error
+                self.extra_info = extra_info
+                self.message = message
+            }
+            public enum CodingKeys: String, CodingKey {
+                case error
+                case extra_info
+                case message
+            }
+        }
+        /// - Remark: Generated from `#/components/schemas/DeletePresentationStateError`.
+        public struct DeletePresentationStateError: Codable, Hashable, Sendable {
+            /// Unique error identifier
+            ///
+            /// - Remark: Generated from `#/components/schemas/DeletePresentationStateError/error`.
+            @frozen public enum errorPayload: String, Codable, Hashable, Sendable {
+                case delete_presentation_state_error = "delete_presentation_state_error"
+            }
+            /// Unique error identifier
+            ///
+            /// - Remark: Generated from `#/components/schemas/DeletePresentationStateError/error`.
+            public var error: Components.Schemas.DeletePresentationStateError.errorPayload
+            /// Object that may contain more information about the error
+            ///
+            /// - Remark: Generated from `#/components/schemas/DeletePresentationStateError/extra_info`.
+            public var extra_info: OpenAPIRuntime.OpenAPIObjectContainer
+            /// User friendly error message
+            ///
+            /// - Remark: Generated from `#/components/schemas/DeletePresentationStateError/message`.
+            public var message: Swift.String
+            /// Creates a new `DeletePresentationStateError`.
+            ///
+            /// - Parameters:
+            ///   - error: Unique error identifier
+            ///   - extra_info: Object that may contain more information about the error
+            ///   - message: User friendly error message
+            public init(
+                error: Components.Schemas.DeletePresentationStateError.errorPayload,
+                extra_info: OpenAPIRuntime.OpenAPIObjectContainer,
+                message: Swift.String
+            ) {
+                self.error = error
+                self.extra_info = extra_info
+                self.message = message
+            }
+            public enum CodingKeys: String, CodingKey {
+                case error
+                case extra_info
+                case message
             }
         }
         /// - Remark: Generated from `#/components/schemas/Meta`.
@@ -8133,6 +8720,57 @@ public enum Operations {
                     }
                 }
             }
+            public struct InternalServerError: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/wallets/{walletId}/dids/POST/responses/500/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/wallets/{walletId}/dids/POST/responses/500/content/application\/json`.
+                    case json(Components.Schemas.CreateDidError)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.CreateDidError {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.DidController_create.Output.InternalServerError.Body
+                /// Creates a new `InternalServerError`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.DidController_create.Output.InternalServerError.Body) {
+                    self.body = body
+                }
+            }
+            ///
+            ///
+            /// - Remark: Generated from `#/paths//wallets/{walletId}/dids/post(DidController_create)/responses/500`.
+            ///
+            /// HTTP response code: `500 internalServerError`.
+            case internalServerError(Operations.DidController_create.Output.InternalServerError)
+            /// The associated value of the enum case if `self` is `.internalServerError`.
+            ///
+            /// - Throws: An error if `self` is not `.internalServerError`.
+            /// - SeeAlso: `.internalServerError`.
+            public var internalServerError: Operations.DidController_create.Output.InternalServerError {
+                get throws {
+                    switch self {
+                    case let .internalServerError(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "internalServerError",
+                            response: self
+                        )
+                    }
+                }
+            }
             /// Undocumented response.
             ///
             /// A response with a code that is not documented in the OpenAPI document.
@@ -8244,6 +8882,57 @@ public enum Operations {
                     }
                 }
             }
+            public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/wallets/{walletId}/dids/{id}/DELETE/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/wallets/{walletId}/dids/{id}/DELETE/responses/400/content/application\/json`.
+                    case json(Components.Schemas.SvxDidCannotBeDeletedError)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.SvxDidCannotBeDeletedError {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.DidController_delete.Output.BadRequest.Body
+                /// Creates a new `BadRequest`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.DidController_delete.Output.BadRequest.Body) {
+                    self.body = body
+                }
+            }
+            /// SVX DID belonging to the wallet cannot be deleted
+            ///
+            /// - Remark: Generated from `#/paths//wallets/{walletId}/dids/{id}/delete(DidController_delete)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.DidController_delete.Output.BadRequest)
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            public var badRequest: Operations.DidController_delete.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
             public struct NotFound: Sendable, Hashable {
                 /// - Remark: Generated from `#/paths/wallets/{walletId}/dids/{id}/DELETE/responses/404/content`.
                 @frozen public enum Body: Sendable, Hashable {
@@ -8290,6 +8979,57 @@ public enum Operations {
                     default:
                         try throwUnexpectedResponseStatus(
                             expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct InternalServerError: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/wallets/{walletId}/dids/{id}/DELETE/responses/500/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/wallets/{walletId}/dids/{id}/DELETE/responses/500/content/application\/json`.
+                    case json(Components.Schemas.DeleteDidError)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.DeleteDidError {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.DidController_delete.Output.InternalServerError.Body
+                /// Creates a new `InternalServerError`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.DidController_delete.Output.InternalServerError.Body) {
+                    self.body = body
+                }
+            }
+            ///
+            ///
+            /// - Remark: Generated from `#/paths//wallets/{walletId}/dids/{id}/delete(DidController_delete)/responses/500`.
+            ///
+            /// HTTP response code: `500 internalServerError`.
+            case internalServerError(Operations.DidController_delete.Output.InternalServerError)
+            /// The associated value of the enum case if `self` is `.internalServerError`.
+            ///
+            /// - Throws: An error if `self` is not `.internalServerError`.
+            /// - SeeAlso: `.internalServerError`.
+            public var internalServerError: Operations.DidController_delete.Output.InternalServerError {
+                get throws {
+                    switch self {
+                    case let .internalServerError(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "internalServerError",
                             response: self
                         )
                     }
@@ -9203,8 +9943,10 @@ public enum Operations {
     ///
     /// Key binding is performed by providing either
     ///
-    /// - `kid`: Public key is presented.
-    /// - `did`: DID is presented referencing one of the keys contained in the `verificationMethod` section of the DID document.
+    /// - `kid`: Public key is presented. Should be used when credential format is `vc+sd-jwt`.
+    /// - `did`: DID is presented referencing one of the keys contained in the `verificationMethod` section of the DID document. Should be used when credential format is `jwt_vc_json`.
+    ///
+    /// Only one of the `kid` or `did` parameters must be present during the request.
     ///
     /// Both methods involve the wallet presenting key proof to the issuer to ensure control over cryptographic key material.
     ///
@@ -9409,15 +10151,12 @@ public enum Operations {
             }
         }
     }
-    /// Get receive credential state
-    ///
-    /// Get the current state of a receive credential flow.
-    ///
+    /// Get credential receive state
     ///
     /// - Remark: HTTP `GET /wallets/{walletId}/receive/{state}`.
-    /// - Remark: Generated from `#/paths//wallets/{walletId}/receive/{state}/get(ReceiveController_findOne)`.
-    public enum ReceiveController_findOne {
-        public static let id: Swift.String = "ReceiveController_findOne"
+    /// - Remark: Generated from `#/paths//wallets/{walletId}/receive/{state}/get(ReceiveController_getInfo)`.
+    public enum ReceiveController_getInfo {
+        public static let id: Swift.String = "ReceiveController_getInfo"
         public struct Input: Sendable, Hashable {
             /// - Remark: Generated from `#/paths/wallets/{walletId}/receive/{state}/GET/path`.
             public struct Path: Sendable, Hashable {
@@ -9438,27 +10177,27 @@ public enum Operations {
                     self.state = state
                 }
             }
-            public var path: Operations.ReceiveController_findOne.Input.Path
+            public var path: Operations.ReceiveController_getInfo.Input.Path
             /// - Remark: Generated from `#/paths/wallets/{walletId}/receive/{state}/GET/header`.
             public struct Headers: Sendable, Hashable {
-                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ReceiveController_findOne.AcceptableContentType>]
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ReceiveController_getInfo.AcceptableContentType>]
                 /// Creates a new `Headers`.
                 ///
                 /// - Parameters:
                 ///   - accept:
-                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ReceiveController_findOne.AcceptableContentType>] = .defaultValues()) {
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ReceiveController_getInfo.AcceptableContentType>] = .defaultValues()) {
                     self.accept = accept
                 }
             }
-            public var headers: Operations.ReceiveController_findOne.Input.Headers
+            public var headers: Operations.ReceiveController_getInfo.Input.Headers
             /// Creates a new `Input`.
             ///
             /// - Parameters:
             ///   - path:
             ///   - headers:
             public init(
-                path: Operations.ReceiveController_findOne.Input.Path,
-                headers: Operations.ReceiveController_findOne.Input.Headers = .init()
+                path: Operations.ReceiveController_getInfo.Input.Path,
+                headers: Operations.ReceiveController_getInfo.Input.Headers = .init()
             ) {
                 self.path = path
                 self.headers = headers
@@ -9484,26 +10223,26 @@ public enum Operations {
                     }
                 }
                 /// Received HTTP response body
-                public var body: Operations.ReceiveController_findOne.Output.Ok.Body
+                public var body: Operations.ReceiveController_getInfo.Output.Ok.Body
                 /// Creates a new `Ok`.
                 ///
                 /// - Parameters:
                 ///   - body: Received HTTP response body
-                public init(body: Operations.ReceiveController_findOne.Output.Ok.Body) {
+                public init(body: Operations.ReceiveController_getInfo.Output.Ok.Body) {
                     self.body = body
                 }
             }
+            /// Credential receive state successfully loaded
             ///
-            ///
-            /// - Remark: Generated from `#/paths//wallets/{walletId}/receive/{state}/get(ReceiveController_findOne)/responses/200`.
+            /// - Remark: Generated from `#/paths//wallets/{walletId}/receive/{state}/get(ReceiveController_getInfo)/responses/200`.
             ///
             /// HTTP response code: `200 ok`.
-            case ok(Operations.ReceiveController_findOne.Output.Ok)
+            case ok(Operations.ReceiveController_getInfo.Output.Ok)
             /// The associated value of the enum case if `self` is `.ok`.
             ///
             /// - Throws: An error if `self` is not `.ok`.
             /// - SeeAlso: `.ok`.
-            public var ok: Operations.ReceiveController_findOne.Output.Ok {
+            public var ok: Operations.ReceiveController_getInfo.Output.Ok {
                 get throws {
                     switch self {
                     case let .ok(response):
@@ -9535,26 +10274,26 @@ public enum Operations {
                     }
                 }
                 /// Received HTTP response body
-                public var body: Operations.ReceiveController_findOne.Output.NotFound.Body
+                public var body: Operations.ReceiveController_getInfo.Output.NotFound.Body
                 /// Creates a new `NotFound`.
                 ///
                 /// - Parameters:
                 ///   - body: Received HTTP response body
-                public init(body: Operations.ReceiveController_findOne.Output.NotFound.Body) {
+                public init(body: Operations.ReceiveController_getInfo.Output.NotFound.Body) {
                     self.body = body
                 }
             }
             ///
             ///
-            /// - Remark: Generated from `#/paths//wallets/{walletId}/receive/{state}/get(ReceiveController_findOne)/responses/404`.
+            /// - Remark: Generated from `#/paths//wallets/{walletId}/receive/{state}/get(ReceiveController_getInfo)/responses/404`.
             ///
             /// HTTP response code: `404 notFound`.
-            case notFound(Operations.ReceiveController_findOne.Output.NotFound)
+            case notFound(Operations.ReceiveController_getInfo.Output.NotFound)
             /// The associated value of the enum case if `self` is `.notFound`.
             ///
             /// - Throws: An error if `self` is not `.notFound`.
             /// - SeeAlso: `.notFound`.
-            public var notFound: Operations.ReceiveController_findOne.Output.NotFound {
+            public var notFound: Operations.ReceiveController_getInfo.Output.NotFound {
                 get throws {
                     switch self {
                     case let .notFound(response):
@@ -9562,6 +10301,220 @@ public enum Operations {
                     default:
                         try throwUnexpectedResponseStatus(
                             expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct InternalServerError: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/wallets/{walletId}/receive/{state}/GET/responses/500/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/wallets/{walletId}/receive/{state}/GET/responses/500/content/json`.
+                    @frozen public enum jsonPayload: Codable, Hashable, Sendable {
+                        /// - Remark: Generated from `#/paths/wallets/{walletId}/receive/{state}/GET/responses/500/content/json/case1`.
+                        case InternalServerError(Components.Schemas.InternalServerError)
+                        public init(from decoder: any Decoder) throws {
+                            var errors: [any Error] = []
+                            do {
+                                self = .InternalServerError(try .init(from: decoder))
+                                return
+                            } catch {
+                                errors.append(error)
+                            }
+                            throw Swift.DecodingError.failedToDecodeOneOfSchema(
+                                type: Self.self,
+                                codingPath: decoder.codingPath,
+                                errors: errors
+                            )
+                        }
+                        public func encode(to encoder: any Encoder) throws {
+                            switch self {
+                            case let .InternalServerError(value):
+                                try value.encode(to: encoder)
+                            }
+                        }
+                    }
+                    /// - Remark: Generated from `#/paths/wallets/{walletId}/receive/{state}/GET/responses/500/content/application\/json`.
+                    case json(Operations.ReceiveController_getInfo.Output.InternalServerError.Body.jsonPayload)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Operations.ReceiveController_getInfo.Output.InternalServerError.Body.jsonPayload {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.ReceiveController_getInfo.Output.InternalServerError.Body
+                /// Creates a new `InternalServerError`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.ReceiveController_getInfo.Output.InternalServerError.Body) {
+                    self.body = body
+                }
+            }
+            ///
+            ///
+            /// - Remark: Generated from `#/paths//wallets/{walletId}/receive/{state}/get(ReceiveController_getInfo)/responses/500`.
+            ///
+            /// HTTP response code: `500 internalServerError`.
+            case internalServerError(Operations.ReceiveController_getInfo.Output.InternalServerError)
+            /// The associated value of the enum case if `self` is `.internalServerError`.
+            ///
+            /// - Throws: An error if `self` is not `.internalServerError`.
+            /// - SeeAlso: `.internalServerError`.
+            public var internalServerError: Operations.ReceiveController_getInfo.Output.InternalServerError {
+                get throws {
+                    switch self {
+                    case let .internalServerError(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "internalServerError",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
+    /// Delete receive credential state
+    ///
+    /// Delete state of a receive credential flow.
+    ///
+    ///
+    /// - Remark: HTTP `DELETE /wallets/{walletId}/receive/{state}`.
+    /// - Remark: Generated from `#/paths//wallets/{walletId}/receive/{state}/delete(ReceiveController_deleteOne)`.
+    public enum ReceiveController_deleteOne {
+        public static let id: Swift.String = "ReceiveController_deleteOne"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/wallets/{walletId}/receive/{state}/DELETE/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/wallets/{walletId}/receive/{state}/DELETE/path/walletId`.
+                public var walletId: Swift.String
+                /// - Remark: Generated from `#/paths/wallets/{walletId}/receive/{state}/DELETE/path/state`.
+                public var state: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - walletId:
+                ///   - state:
+                public init(
+                    walletId: Swift.String,
+                    state: Swift.String
+                ) {
+                    self.walletId = walletId
+                    self.state = state
+                }
+            }
+            public var path: Operations.ReceiveController_deleteOne.Input.Path
+            /// - Remark: Generated from `#/paths/wallets/{walletId}/receive/{state}/DELETE/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ReceiveController_deleteOne.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.ReceiveController_deleteOne.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.ReceiveController_deleteOne.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            public init(
+                path: Operations.ReceiveController_deleteOne.Input.Path,
+                headers: Operations.ReceiveController_deleteOne.Input.Headers = .init()
+            ) {
+                self.path = path
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct InternalServerError: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/wallets/{walletId}/receive/{state}/DELETE/responses/500/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/wallets/{walletId}/receive/{state}/DELETE/responses/500/content/application\/json`.
+                    case json(Components.Schemas.DeleteReceiveStateError)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.DeleteReceiveStateError {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.ReceiveController_deleteOne.Output.InternalServerError.Body
+                /// Creates a new `InternalServerError`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.ReceiveController_deleteOne.Output.InternalServerError.Body) {
+                    self.body = body
+                }
+            }
+            ///
+            ///
+            /// - Remark: Generated from `#/paths//wallets/{walletId}/receive/{state}/delete(ReceiveController_deleteOne)/responses/500`.
+            ///
+            /// HTTP response code: `500 internalServerError`.
+            case internalServerError(Operations.ReceiveController_deleteOne.Output.InternalServerError)
+            /// The associated value of the enum case if `self` is `.internalServerError`.
+            ///
+            /// - Throws: An error if `self` is not `.internalServerError`.
+            /// - SeeAlso: `.internalServerError`.
+            public var internalServerError: Operations.ReceiveController_deleteOne.Output.InternalServerError {
+                get throws {
+                    switch self {
+                    case let .internalServerError(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "internalServerError",
                             response: self
                         )
                     }
@@ -9610,8 +10563,65 @@ public enum Operations {
     public enum ReceiveController_callback {
         public static let id: Swift.String = "ReceiveController_callback"
         public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/wallets/receive/callback/GET/query`.
+            public struct Query: Sendable, Hashable {
+                /// Error code
+                ///
+                /// - Remark: Generated from `#/paths/wallets/receive/callback/GET/query/error`.
+                public var error: Swift.String?
+                /// Error description
+                ///
+                /// - Remark: Generated from `#/paths/wallets/receive/callback/GET/query/error_description`.
+                public var error_description: Swift.String?
+                /// Error URI
+                ///
+                /// - Remark: Generated from `#/paths/wallets/receive/callback/GET/query/error_uri`.
+                public var error_uri: Swift.String?
+                /// Authorization code
+                ///
+                /// - Remark: Generated from `#/paths/wallets/receive/callback/GET/query/code`.
+                public var code: Swift.String?
+                /// Authorization state
+                ///
+                /// - Remark: Generated from `#/paths/wallets/receive/callback/GET/query/state`.
+                public var state: Swift.String?
+                /// Access token issuer
+                ///
+                /// - Remark: Generated from `#/paths/wallets/receive/callback/GET/query/iss`.
+                public var iss: Swift.String?
+                /// Creates a new `Query`.
+                ///
+                /// - Parameters:
+                ///   - error: Error code
+                ///   - error_description: Error description
+                ///   - error_uri: Error URI
+                ///   - code: Authorization code
+                ///   - state: Authorization state
+                ///   - iss: Access token issuer
+                public init(
+                    error: Swift.String? = nil,
+                    error_description: Swift.String? = nil,
+                    error_uri: Swift.String? = nil,
+                    code: Swift.String? = nil,
+                    state: Swift.String? = nil,
+                    iss: Swift.String? = nil
+                ) {
+                    self.error = error
+                    self.error_description = error_description
+                    self.error_uri = error_uri
+                    self.code = code
+                    self.state = state
+                    self.iss = iss
+                }
+            }
+            public var query: Operations.ReceiveController_callback.Input.Query
             /// Creates a new `Input`.
-            public init() {}
+            ///
+            /// - Parameters:
+            ///   - query:
+            public init(query: Operations.ReceiveController_callback.Input.Query = .init()) {
+                self.query = query
+            }
         }
         @frozen public enum Output: Sendable, Hashable {
             public struct Found: Sendable, Hashable {
@@ -10758,6 +11768,57 @@ public enum Operations {
                     }
                 }
             }
+            public struct InternalServerError: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/wallets/{walletId}/send/submit/POST/responses/500/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/wallets/{walletId}/send/submit/POST/responses/500/content/application\/json`.
+                    case json(Components.Schemas.InvalidClaimsToDiscloseError)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.InvalidClaimsToDiscloseError {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.SendController_submit.Output.InternalServerError.Body
+                /// Creates a new `InternalServerError`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.SendController_submit.Output.InternalServerError.Body) {
+                    self.body = body
+                }
+            }
+            ///
+            ///
+            /// - Remark: Generated from `#/paths//wallets/{walletId}/send/submit/post(SendController_submit)/responses/500`.
+            ///
+            /// HTTP response code: `500 internalServerError`.
+            case internalServerError(Operations.SendController_submit.Output.InternalServerError)
+            /// The associated value of the enum case if `self` is `.internalServerError`.
+            ///
+            /// - Throws: An error if `self` is not `.internalServerError`.
+            /// - SeeAlso: `.internalServerError`.
+            public var internalServerError: Operations.SendController_submit.Output.InternalServerError {
+                get throws {
+                    switch self {
+                    case let .internalServerError(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "internalServerError",
+                            response: self
+                        )
+                    }
+                }
+            }
             /// Undocumented response.
             ///
             /// A response with a code that is not documented in the OpenAPI document.
@@ -10975,6 +12036,342 @@ public enum Operations {
             }
         }
     }
+    /// Delete Verifiable Presentation State by ID
+    ///
+    /// Delete state of a presentation flow
+    ///
+    /// - Remark: HTTP `DELETE /wallets/{walletId}/send/{state}`.
+    /// - Remark: Generated from `#/paths//wallets/{walletId}/send/{state}/delete(SendController_deleteOne)`.
+    public enum SendController_deleteOne {
+        public static let id: Swift.String = "SendController_deleteOne"
+        public struct Input: Sendable, Hashable {
+            /// - Remark: Generated from `#/paths/wallets/{walletId}/send/{state}/DELETE/path`.
+            public struct Path: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/wallets/{walletId}/send/{state}/DELETE/path/walletId`.
+                public var walletId: Swift.String
+                /// - Remark: Generated from `#/paths/wallets/{walletId}/send/{state}/DELETE/path/state`.
+                public var state: Swift.String
+                /// Creates a new `Path`.
+                ///
+                /// - Parameters:
+                ///   - walletId:
+                ///   - state:
+                public init(
+                    walletId: Swift.String,
+                    state: Swift.String
+                ) {
+                    self.walletId = walletId
+                    self.state = state
+                }
+            }
+            public var path: Operations.SendController_deleteOne.Input.Path
+            /// - Remark: Generated from `#/paths/wallets/{walletId}/send/{state}/DELETE/header`.
+            public struct Headers: Sendable, Hashable {
+                public var accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.SendController_deleteOne.AcceptableContentType>]
+                /// Creates a new `Headers`.
+                ///
+                /// - Parameters:
+                ///   - accept:
+                public init(accept: [OpenAPIRuntime.AcceptHeaderContentType<Operations.SendController_deleteOne.AcceptableContentType>] = .defaultValues()) {
+                    self.accept = accept
+                }
+            }
+            public var headers: Operations.SendController_deleteOne.Input.Headers
+            /// Creates a new `Input`.
+            ///
+            /// - Parameters:
+            ///   - path:
+            ///   - headers:
+            public init(
+                path: Operations.SendController_deleteOne.Input.Path,
+                headers: Operations.SendController_deleteOne.Input.Headers = .init()
+            ) {
+                self.path = path
+                self.headers = headers
+            }
+        }
+        @frozen public enum Output: Sendable, Hashable {
+            public struct NoContent: Sendable, Hashable {
+                /// Creates a new `NoContent`.
+                public init() {}
+            }
+            /// Presentation State by ID successfuly removed
+            ///
+            /// - Remark: Generated from `#/paths//wallets/{walletId}/send/{state}/delete(SendController_deleteOne)/responses/204`.
+            ///
+            /// HTTP response code: `204 noContent`.
+            case noContent(Operations.SendController_deleteOne.Output.NoContent)
+            /// The associated value of the enum case if `self` is `.noContent`.
+            ///
+            /// - Throws: An error if `self` is not `.noContent`.
+            /// - SeeAlso: `.noContent`.
+            public var noContent: Operations.SendController_deleteOne.Output.NoContent {
+                get throws {
+                    switch self {
+                    case let .noContent(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "noContent",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct BadRequest: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/wallets/{walletId}/send/{state}/DELETE/responses/400/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/wallets/{walletId}/send/{state}/DELETE/responses/400/content/application\/json`.
+                    case json(Components.Schemas.InvalidPathParamError)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Components.Schemas.InvalidPathParamError {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.SendController_deleteOne.Output.BadRequest.Body
+                /// Creates a new `BadRequest`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.SendController_deleteOne.Output.BadRequest.Body) {
+                    self.body = body
+                }
+            }
+            ///
+            ///
+            /// - Remark: Generated from `#/paths//wallets/{walletId}/send/{state}/delete(SendController_deleteOne)/responses/400`.
+            ///
+            /// HTTP response code: `400 badRequest`.
+            case badRequest(Operations.SendController_deleteOne.Output.BadRequest)
+            /// The associated value of the enum case if `self` is `.badRequest`.
+            ///
+            /// - Throws: An error if `self` is not `.badRequest`.
+            /// - SeeAlso: `.badRequest`.
+            public var badRequest: Operations.SendController_deleteOne.Output.BadRequest {
+                get throws {
+                    switch self {
+                    case let .badRequest(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "badRequest",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct NotFound: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/wallets/{walletId}/send/{state}/DELETE/responses/404/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/wallets/{walletId}/send/{state}/DELETE/responses/404/content/json`.
+                    @frozen public enum jsonPayload: Codable, Hashable, Sendable {
+                        /// - Remark: Generated from `#/paths/wallets/{walletId}/send/{state}/DELETE/responses/404/content/json/case1`.
+                        case WalletNotFoundError(Components.Schemas.WalletNotFoundError)
+                        /// - Remark: Generated from `#/paths/wallets/{walletId}/send/{state}/DELETE/responses/404/content/json/case2`.
+                        case AuthorizationRequestNotFoundError(Components.Schemas.AuthorizationRequestNotFoundError)
+                        public init(from decoder: any Decoder) throws {
+                            var errors: [any Error] = []
+                            do {
+                                self = .WalletNotFoundError(try .init(from: decoder))
+                                return
+                            } catch {
+                                errors.append(error)
+                            }
+                            do {
+                                self = .AuthorizationRequestNotFoundError(try .init(from: decoder))
+                                return
+                            } catch {
+                                errors.append(error)
+                            }
+                            throw Swift.DecodingError.failedToDecodeOneOfSchema(
+                                type: Self.self,
+                                codingPath: decoder.codingPath,
+                                errors: errors
+                            )
+                        }
+                        public func encode(to encoder: any Encoder) throws {
+                            switch self {
+                            case let .WalletNotFoundError(value):
+                                try value.encode(to: encoder)
+                            case let .AuthorizationRequestNotFoundError(value):
+                                try value.encode(to: encoder)
+                            }
+                        }
+                    }
+                    /// - Remark: Generated from `#/paths/wallets/{walletId}/send/{state}/DELETE/responses/404/content/application\/json`.
+                    case json(Operations.SendController_deleteOne.Output.NotFound.Body.jsonPayload)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Operations.SendController_deleteOne.Output.NotFound.Body.jsonPayload {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.SendController_deleteOne.Output.NotFound.Body
+                /// Creates a new `NotFound`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.SendController_deleteOne.Output.NotFound.Body) {
+                    self.body = body
+                }
+            }
+            ///
+            ///
+            /// - Remark: Generated from `#/paths//wallets/{walletId}/send/{state}/delete(SendController_deleteOne)/responses/404`.
+            ///
+            /// HTTP response code: `404 notFound`.
+            case notFound(Operations.SendController_deleteOne.Output.NotFound)
+            /// The associated value of the enum case if `self` is `.notFound`.
+            ///
+            /// - Throws: An error if `self` is not `.notFound`.
+            /// - SeeAlso: `.notFound`.
+            public var notFound: Operations.SendController_deleteOne.Output.NotFound {
+                get throws {
+                    switch self {
+                    case let .notFound(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct InternalServerError: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/wallets/{walletId}/send/{state}/DELETE/responses/500/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/wallets/{walletId}/send/{state}/DELETE/responses/500/content/json`.
+                    @frozen public enum jsonPayload: Codable, Hashable, Sendable {
+                        /// - Remark: Generated from `#/paths/wallets/{walletId}/send/{state}/DELETE/responses/500/content/json/case1`.
+                        case DeletePresentationStateError(Components.Schemas.DeletePresentationStateError)
+                        /// - Remark: Generated from `#/paths/wallets/{walletId}/send/{state}/DELETE/responses/500/content/json/case2`.
+                        case InternalServerError(Components.Schemas.InternalServerError)
+                        public init(from decoder: any Decoder) throws {
+                            var errors: [any Error] = []
+                            do {
+                                self = .DeletePresentationStateError(try .init(from: decoder))
+                                return
+                            } catch {
+                                errors.append(error)
+                            }
+                            do {
+                                self = .InternalServerError(try .init(from: decoder))
+                                return
+                            } catch {
+                                errors.append(error)
+                            }
+                            throw Swift.DecodingError.failedToDecodeOneOfSchema(
+                                type: Self.self,
+                                codingPath: decoder.codingPath,
+                                errors: errors
+                            )
+                        }
+                        public func encode(to encoder: any Encoder) throws {
+                            switch self {
+                            case let .DeletePresentationStateError(value):
+                                try value.encode(to: encoder)
+                            case let .InternalServerError(value):
+                                try value.encode(to: encoder)
+                            }
+                        }
+                    }
+                    /// - Remark: Generated from `#/paths/wallets/{walletId}/send/{state}/DELETE/responses/500/content/application\/json`.
+                    case json(Operations.SendController_deleteOne.Output.InternalServerError.Body.jsonPayload)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Operations.SendController_deleteOne.Output.InternalServerError.Body.jsonPayload {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.SendController_deleteOne.Output.InternalServerError.Body
+                /// Creates a new `InternalServerError`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.SendController_deleteOne.Output.InternalServerError.Body) {
+                    self.body = body
+                }
+            }
+            ///
+            ///
+            /// - Remark: Generated from `#/paths//wallets/{walletId}/send/{state}/delete(SendController_deleteOne)/responses/500`.
+            ///
+            /// HTTP response code: `500 internalServerError`.
+            case internalServerError(Operations.SendController_deleteOne.Output.InternalServerError)
+            /// The associated value of the enum case if `self` is `.internalServerError`.
+            ///
+            /// - Throws: An error if `self` is not `.internalServerError`.
+            /// - SeeAlso: `.internalServerError`.
+            public var internalServerError: Operations.SendController_deleteOne.Output.InternalServerError {
+                get throws {
+                    switch self {
+                    case let .internalServerError(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "internalServerError",
+                            response: self
+                        )
+                    }
+                }
+            }
+            /// Undocumented response.
+            ///
+            /// A response with a code that is not documented in the OpenAPI document.
+            case undocumented(statusCode: Swift.Int, OpenAPIRuntime.UndocumentedPayload)
+        }
+        @frozen public enum AcceptableContentType: AcceptableProtocol {
+            case json
+            case other(Swift.String)
+            public init?(rawValue: Swift.String) {
+                switch rawValue.lowercased() {
+                case "application/json":
+                    self = .json
+                default:
+                    self = .other(rawValue)
+                }
+            }
+            public var rawValue: Swift.String {
+                switch self {
+                case let .other(string):
+                    return string
+                case .json:
+                    return "application/json"
+                }
+            }
+            public static var allCases: [Self] {
+                [
+                    .json
+                ]
+            }
+        }
+    }
     /// Import credential
     ///
     /// Import an existing credential from a known format into a Wallet.
@@ -11043,12 +12440,12 @@ public enum Operations {
                 /// - Remark: Generated from `#/paths/wallets/{walletId}/credentials/import/POST/responses/201/content`.
                 @frozen public enum Body: Sendable, Hashable {
                     /// - Remark: Generated from `#/paths/wallets/{walletId}/credentials/import/POST/responses/201/content/application\/json`.
-                    case json(Components.Schemas.CredentialResponseModelDto)
+                    case json(Components.Schemas.CredentialResponseDto)
                     /// The associated value of the enum case if `self` is `.json`.
                     ///
                     /// - Throws: An error if `self` is not `.json`.
                     /// - SeeAlso: `.json`.
-                    public var json: Components.Schemas.CredentialResponseModelDto {
+                    public var json: Components.Schemas.CredentialResponseDto {
                         get throws {
                             switch self {
                             case let .json(body):
@@ -11282,49 +12679,48 @@ public enum Operations {
             public var path: Operations.CredentialsController_findAll.Input.Path
             /// - Remark: Generated from `#/paths/wallets/{walletId}/credentials/GET/query`.
             public struct Query: Sendable, Hashable {
-                /// Next credentials page cursor filter
-                ///
-                /// - Remark: Generated from `#/paths/wallets/{walletId}/credentials/GET/query/next_page_after`.
-                public var next_page_after: Swift.String?
-                /// Credentials per page filter
-                ///
-                /// - Remark: Generated from `#/paths/wallets/{walletId}/credentials/GET/query/per_page`.
-                public var per_page: Swift.String?
                 /// - Remark: Generated from `#/paths/wallets/{walletId}/credentials/GET/query/order`.
                 @frozen public enum orderPayload: String, Codable, Hashable, Sendable {
-                    case asc = "asc"
-                    case desc = "desc"
+                    case ASC = "ASC"
+                    case DESC = "DESC"
                 }
-                /// Credential order by their creation date filter
+                /// Issuance state response order. Default ordering: `DESC` (Supported: `ASC`, `DESC`)
                 ///
                 /// - Remark: Generated from `#/paths/wallets/{walletId}/credentials/GET/query/order`.
                 public var order: Operations.CredentialsController_findAll.Input.Query.orderPayload?
-                /// - Remark: Generated from `#/paths/wallets/{walletId}/credentials/GET/query/format`.
-                @frozen public enum formatPayload: String, Codable, Hashable, Sendable {
-                    case vc_plus_sd_hyphen_jwt = "vc+sd-jwt"
-                    case jwt_vc_json = "jwt_vc_json"
+                /// - Remark: Generated from `#/paths/wallets/{walletId}/credentials/GET/query/order_by`.
+                @frozen public enum order_byPayload: String, Codable, Hashable, Sendable {
+                    case created_at = "created_at"
                 }
-                /// Filter credentials by their format
+                /// Order Issuance state by an attribute, defaults to: `created_at` (Supported: `created_at`)
                 ///
-                /// - Remark: Generated from `#/paths/wallets/{walletId}/credentials/GET/query/format`.
-                public var format: Operations.CredentialsController_findAll.Input.Query.formatPayload?
+                /// - Remark: Generated from `#/paths/wallets/{walletId}/credentials/GET/query/order_by`.
+                public var order_by: Operations.CredentialsController_findAll.Input.Query.order_byPayload?
+                /// Number of records per page
+                ///
+                /// - Remark: Generated from `#/paths/wallets/{walletId}/credentials/GET/query/per_page`.
+                public var per_page: OpenAPIRuntime.OpenAPIValueContainer?
+                /// Page number (starting from 1)
+                ///
+                /// - Remark: Generated from `#/paths/wallets/{walletId}/credentials/GET/query/page`.
+                public var page: OpenAPIRuntime.OpenAPIValueContainer?
                 /// Creates a new `Query`.
                 ///
                 /// - Parameters:
-                ///   - next_page_after: Next credentials page cursor filter
-                ///   - per_page: Credentials per page filter
-                ///   - order: Credential order by their creation date filter
-                ///   - format: Filter credentials by their format
+                ///   - order: Issuance state response order. Default ordering: `DESC` (Supported: `ASC`, `DESC`)
+                ///   - order_by: Order Issuance state by an attribute, defaults to: `created_at` (Supported: `created_at`)
+                ///   - per_page: Number of records per page
+                ///   - page: Page number (starting from 1)
                 public init(
-                    next_page_after: Swift.String? = nil,
-                    per_page: Swift.String? = nil,
                     order: Operations.CredentialsController_findAll.Input.Query.orderPayload? = nil,
-                    format: Operations.CredentialsController_findAll.Input.Query.formatPayload? = nil
+                    order_by: Operations.CredentialsController_findAll.Input.Query.order_byPayload? = nil,
+                    per_page: OpenAPIRuntime.OpenAPIValueContainer? = nil,
+                    page: OpenAPIRuntime.OpenAPIValueContainer? = nil
                 ) {
-                    self.next_page_after = next_page_after
-                    self.per_page = per_page
                     self.order = order
-                    self.format = format
+                    self.order_by = order_by
+                    self.per_page = per_page
+                    self.page = page
                 }
             }
             public var query: Operations.CredentialsController_findAll.Input.Query
@@ -12037,6 +13433,7 @@ public enum Operations {
     /// Patches credential stored inside a Wallet.
     ///
     /// Used to update `did` and `kid` fields in the meta data of the credential. Note that the `did` and `kid` need to reference an existing DID and Key Id.
+    /// This is used to associate an (existing) Key and/or DID controlled by the wallet with the credential to make it easier to reference that Key and/or DID when presenting credentials for example.
     ///
     ///
     /// - Remark: HTTP `PATCH /wallets/{walletId}/credentials/{vcId}`.
@@ -12100,32 +13497,8 @@ public enum Operations {
         }
         @frozen public enum Output: Sendable, Hashable {
             public struct NoContent: Sendable, Hashable {
-                /// - Remark: Generated from `#/paths/wallets/{walletId}/credentials/{vcId}/PATCH/responses/204/content`.
-                @frozen public enum Body: Sendable, Hashable {
-                    /// - Remark: Generated from `#/paths/wallets/{walletId}/credentials/{vcId}/PATCH/responses/204/content/application\/json`.
-                    case json(Components.Schemas.CredentialResponseDto)
-                    /// The associated value of the enum case if `self` is `.json`.
-                    ///
-                    /// - Throws: An error if `self` is not `.json`.
-                    /// - SeeAlso: `.json`.
-                    public var json: Components.Schemas.CredentialResponseDto {
-                        get throws {
-                            switch self {
-                            case let .json(body):
-                                return body
-                            }
-                        }
-                    }
-                }
-                /// Received HTTP response body
-                public var body: Operations.CredentialsController_patch.Output.NoContent.Body
                 /// Creates a new `NoContent`.
-                ///
-                /// - Parameters:
-                ///   - body: Received HTTP response body
-                public init(body: Operations.CredentialsController_patch.Output.NoContent.Body) {
-                    self.body = body
-                }
+                public init() {}
             }
             /// Wallet credential successfully patched
             ///
@@ -12163,6 +13536,8 @@ public enum Operations {
                         case KeyNotFoundError(Components.Schemas.KeyNotFoundError)
                         /// - Remark: Generated from `#/paths/wallets/{walletId}/credentials/{vcId}/PATCH/responses/404/content/json/case4`.
                         case DidNotFoundError(Components.Schemas.DidNotFoundError)
+                        /// - Remark: Generated from `#/paths/wallets/{walletId}/credentials/{vcId}/PATCH/responses/404/content/json/case5`.
+                        case DidKidAssociationNotFoundError(Components.Schemas.DidKidAssociationNotFoundError)
                         public init(from decoder: any Decoder) throws {
                             var errors: [any Error] = []
                             do {
@@ -12189,6 +13564,12 @@ public enum Operations {
                             } catch {
                                 errors.append(error)
                             }
+                            do {
+                                self = .DidKidAssociationNotFoundError(try .init(from: decoder))
+                                return
+                            } catch {
+                                errors.append(error)
+                            }
                             throw Swift.DecodingError.failedToDecodeOneOfSchema(
                                 type: Self.self,
                                 codingPath: decoder.codingPath,
@@ -12204,6 +13585,8 @@ public enum Operations {
                             case let .KeyNotFoundError(value):
                                 try value.encode(to: encoder)
                             case let .DidNotFoundError(value):
+                                try value.encode(to: encoder)
+                            case let .DidKidAssociationNotFoundError(value):
                                 try value.encode(to: encoder)
                             }
                         }
@@ -12251,6 +13634,92 @@ public enum Operations {
                     default:
                         try throwUnexpectedResponseStatus(
                             expectedStatus: "notFound",
+                            response: self
+                        )
+                    }
+                }
+            }
+            public struct InternalServerError: Sendable, Hashable {
+                /// - Remark: Generated from `#/paths/wallets/{walletId}/credentials/{vcId}/PATCH/responses/500/content`.
+                @frozen public enum Body: Sendable, Hashable {
+                    /// - Remark: Generated from `#/paths/wallets/{walletId}/credentials/{vcId}/PATCH/responses/500/content/json`.
+                    @frozen public enum jsonPayload: Codable, Hashable, Sendable {
+                        /// - Remark: Generated from `#/paths/wallets/{walletId}/credentials/{vcId}/PATCH/responses/500/content/json/case1`.
+                        case PatchCredentialError(Components.Schemas.PatchCredentialError)
+                        /// - Remark: Generated from `#/paths/wallets/{walletId}/credentials/{vcId}/PATCH/responses/500/content/json/case2`.
+                        case InternalServerError(Components.Schemas.InternalServerError)
+                        public init(from decoder: any Decoder) throws {
+                            var errors: [any Error] = []
+                            do {
+                                self = .PatchCredentialError(try .init(from: decoder))
+                                return
+                            } catch {
+                                errors.append(error)
+                            }
+                            do {
+                                self = .InternalServerError(try .init(from: decoder))
+                                return
+                            } catch {
+                                errors.append(error)
+                            }
+                            throw Swift.DecodingError.failedToDecodeOneOfSchema(
+                                type: Self.self,
+                                codingPath: decoder.codingPath,
+                                errors: errors
+                            )
+                        }
+                        public func encode(to encoder: any Encoder) throws {
+                            switch self {
+                            case let .PatchCredentialError(value):
+                                try value.encode(to: encoder)
+                            case let .InternalServerError(value):
+                                try value.encode(to: encoder)
+                            }
+                        }
+                    }
+                    /// - Remark: Generated from `#/paths/wallets/{walletId}/credentials/{vcId}/PATCH/responses/500/content/application\/json`.
+                    case json(Operations.CredentialsController_patch.Output.InternalServerError.Body.jsonPayload)
+                    /// The associated value of the enum case if `self` is `.json`.
+                    ///
+                    /// - Throws: An error if `self` is not `.json`.
+                    /// - SeeAlso: `.json`.
+                    public var json: Operations.CredentialsController_patch.Output.InternalServerError.Body.jsonPayload {
+                        get throws {
+                            switch self {
+                            case let .json(body):
+                                return body
+                            }
+                        }
+                    }
+                }
+                /// Received HTTP response body
+                public var body: Operations.CredentialsController_patch.Output.InternalServerError.Body
+                /// Creates a new `InternalServerError`.
+                ///
+                /// - Parameters:
+                ///   - body: Received HTTP response body
+                public init(body: Operations.CredentialsController_patch.Output.InternalServerError.Body) {
+                    self.body = body
+                }
+            }
+            ///
+            ///
+            /// - Remark: Generated from `#/paths//wallets/{walletId}/credentials/{vcId}/patch(CredentialsController_patch)/responses/500`.
+            ///
+            /// HTTP response code: `500 internalServerError`.
+            case internalServerError(Operations.CredentialsController_patch.Output.InternalServerError)
+            /// The associated value of the enum case if `self` is `.internalServerError`.
+            ///
+            /// - Throws: An error if `self` is not `.internalServerError`.
+            /// - SeeAlso: `.internalServerError`.
+            public var internalServerError: Operations.CredentialsController_patch.Output.InternalServerError {
+                get throws {
+                    switch self {
+                    case let .internalServerError(response):
+                        return response
+                    default:
+                        try throwUnexpectedResponseStatus(
+                            expectedStatus: "internalServerError",
                             response: self
                         )
                     }

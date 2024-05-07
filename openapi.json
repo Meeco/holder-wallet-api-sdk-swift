@@ -2,11 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Holder Wallet API",
-    "version": "4.0.0",
-    "license": {
-      "name": "Apache 2.0",
-      "url": "https://www.apache.org/licenses/LICENSE-2.0"
-    },
+    "version": "4.1.0",
     "contact": {},
     "description": "The Holder Wallet API (the service) provides an interface for managing (personal) digital wallets inside an SVX tenant environment. It facilitates a range of operations including key management, DID management, and credential issuance (receiving) and credential presentation (presenting). The goal is to provide flexibility on how the component is integrated, be it with a mobile or web application, or with a third party service.\n\nAll cryptographic keys are managed by the service (often referred to as custodial key management) in a secure manner and can be used to control identifers (i.e. DIDs), as well as perform key binding in credentials.\n\nThe service facilitates receiving and presenting credentials in accordance to leading standards and specifications in the space. The main focus is on the family of OpenID4VC standards, JWT based credential formats and (optionally) DIDs.\n\nOne instance of the service is able to manage multiple wallets, each of which is a collection of keys, DIDs and associated credentials. This service operates in a trusted environment where its client applications are expected to be trusted as well.\n\n## Wallet Management\n\nIt is possible to identify a wallet using an external identifier that matches the client application's user identifier. When providing an external identifier to the create wallet operation, it first searches if an existing wallet exists and returns a reference instead of creating a new instance.\n\n## Key Management\n\nKeys to perform various cryptographic operations are managed within the service and private keys never leave the service.\n\nThe following operations are supported:\n\n- Create a new key\n- Delete an existing key\n- Get a key\n- Import an existing key\n- Sign\n- Sign JWT\n- Encrypt JWE\n- Decrypt JWE\n\nThe service supports the following algorithms as defined in RFC7518:\n\n- ES256\n\nKeys are stored currently stored in a DB (e.g. Postgres). We plan to add integration with HSM services in the future.\n\n## DID Management\n\nEach wallet is able to manage one or more DIDs. The supported DID methods can be found [here](https://docs.meeco.me/guides/api-guides/dids/did-methods). A DID is typically used as a key binding mechanism in a verifiable credential. The key binding takes place in the issuance process and proof is provided during the presentation process.\n\n## Credential Management\n\nThe wallet supports the following credential life cycle operations:\n\n- Receive a credential\n- Present a credential\n- Import an existing credential\n\nReceiving a credential from an issuer typically involves key binding, which is a process where the service provides a public key or DID to the issuer alongside proof that is controls the key material. When this is completed, the credential, signed by the issuer, is stored in the wallet with a reference to the `kid`.\nPresenting a credential to a verifier involves sending the credential, alongside proof of the key binding, to the verifier.\n\nNote that not all credential formats are supported. Please refer to the section on Supported Standards for more information on the different formats that are currently supported.\n\n## SVX Integration\n\nThe service is integrated with SVX Platform, which provides a range of services, including:\n\n- DID operations (create, get)\n- Credential operations (verify)\n- Secure data storage (store credentials)\n\nAll wallets belong to one tenant and receive a DID from the SVX Platform where they are registered as end-users. The DID is used to identify the wallet in the SVX Platform.\n\nEvery wallet instance uses its registered DID to authenticate with the SVX Platform. This enables the service to perform operations and store data for each user in its own context. For performance reasons, access tokens are cached for a limited amount of time (this can be configured).\n\n## Supported Standards and Specifications\n\nThe Wallet provides support for a variety of specifications and standards with the aim of achieving interoperablity with the wider ecosystem. What follows is a list of the supported specifications and standards grouped per logical domain.\n\n**Cryptographic Keys**\n\n- `JWK`: [RFC7517](https://datatracker.ietf.org/doc/html/rfc7517)\n- `JWA`: [RFC7518](https://datatracker.ietf.org/doc/html/rfc7518)\n- `JWE`: [RFC7516](https://datatracker.ietf.org/doc/html/rfc7516)\n- `JOSE`: [JOSE IANA registry](https://www.iana.org/assignments/jose/jose.xhtml)\n\n**Credential formats**:\n\n- `jwt_vc_json`: [W3C Verifiable Credentials](https://www.w3.org/TR/vc-data-model/)\n- `vc+sd-jwt`: [IETF SD-JWT VC](https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/)\n\n**Key Discovery**\n\n- `/.well-known/jwt-vc-issuer` (IETF SD-JWT VC)\n\n**Credential issuance**:\n\n- OpenID 4 Verifiable Credential Issuance (draft 13) [(WG Draft)](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html) [(Editors Draft)](https://openid.github.io/OpenID4VCI/openid-4-verifiable-credential-issuance-wg-draft.html)\n  - Pre-Authorized Code flow\n  - Authorization Code flow\n- [RFC9126 Pushed Authorization Request](https://www.rfc-editor.org/info/rfc9126)\n\n**Credential Presentation**\n\n- OpenID 4 Verifiable Presentation [(WG Draft)](https://openid.net/specs/openid-4-verifiable-presentations-1_0.html)\n\n## Authentication and Authorization\n\nThe service doesn't provide authentication or authorization out-of-the-box. It is up to the client to provide this and the service as such is expected to run inside a secure environment and not directly exposed to the outside world.\n\nA few examples of how the service can be deployed are:\n\n- Behind an API gateway (e.g. AWS API Gateway, Azure API Management, Krakend)\n- Behind a Backend For Frontend service facing the outside world\n\n## Deployment\n\nThe service can be deployed on-premises or in a cloud environment. It relies on following services:\n\n- Postgres (application database; keys, dids, credential metadata)\n- SVX API\n- Redis (access tokens)\n"
   },
@@ -970,6 +966,16 @@
               }
             },
             "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateDidError"
+                }
+              }
+            },
+            "description": ""
           }
         },
         "summary": "Create a DID for a Wallet",
@@ -1004,6 +1010,25 @@
           "204": {
             "description": "DID has been successfully deleted"
           },
+          "400": {
+            "description": "SVX DID belonging to the wallet cannot be deleted",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "svx_authentication_did_cannot_be_deleted": {
+                    "value": {
+                      "error": "svx_authentication_did_cannot_be_deleted",
+                      "extra_info": {},
+                      "message": "SVX DID belonging to the wallet cannot be deleted"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/SvxDidCannotBeDeletedError"
+                }
+              }
+            }
+          },
           "404": {
             "content": {
               "application/json": {
@@ -1018,6 +1043,16 @@
                 },
                 "schema": {
                   "$ref": "#/components/schemas/WalletNotFoundError"
+                }
+              }
+            },
+            "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteDidError"
                 }
               }
             },
@@ -1317,7 +1352,7 @@
     },
     "/wallets/{walletId}/receive/get_credential": {
       "post": {
-        "description": "Get credential from the issuer and perform key binding. A valid access token is required in order to call this endpoint.\n\nSee section 7 in OpenID4VCI for more information.\n\n### Key Binding\n\nKey binding is performed by providing either\n\n- `kid`: Public key is presented.\n- `did`: DID is presented referencing one of the keys contained in the `verificationMethod` section of the DID document.\n\nBoth methods involve the wallet presenting key proof to the issuer to ensure control over cryptographic key material.\n\nSee section 7.2.1 in OpenID4VCI for more information.\n\n### Requesting Multiple Credentials in Sequence\n\nThe `c_nonce` and `c_nonce_expires_in` returned by the issuer allow requesting the same credential, but binding it to different key material.\nThe service automatically manages these attributes, ensuring the correct `c_nonce` is used, allowing multiple credentials to be retrieved, but with different keys.\n\n### Not Supported Options\n\nNote that the following are not supported by the endpoint\n\n- `transaction_id`: Part of the deferred issuance flow, allows receiving a credential by referencing a `transaction_id`\n- Receiving encrypted credentials\n",
+        "description": "Get credential from the issuer and perform key binding. A valid access token is required in order to call this endpoint.\n\nSee section 7 in OpenID4VCI for more information.\n\n### Key Binding\n\nKey binding is performed by providing either\n\n- `kid`: Public key is presented. Should be used when credential format is `vc+sd-jwt`.\n- `did`: DID is presented referencing one of the keys contained in the `verificationMethod` section of the DID document. Should be used when credential format is `jwt_vc_json`.\n\nOnly one of the `kid` or `did` parameters must be present during the request.\n\nBoth methods involve the wallet presenting key proof to the issuer to ensure control over cryptographic key material.\n\nSee section 7.2.1 in OpenID4VCI for more information.\n\n### Requesting Multiple Credentials in Sequence\n\nThe `c_nonce` and `c_nonce_expires_in` returned by the issuer allow requesting the same credential, but binding it to different key material.\nThe service automatically manages these attributes, ensuring the correct `c_nonce` is used, allowing multiple credentials to be retrieved, but with different keys.\n\n### Not Supported Options\n\nNote that the following are not supported by the endpoint\n\n- `transaction_id`: Part of the deferred issuance flow, allows receiving a credential by referencing a `transaction_id`\n- Receiving encrypted credentials\n",
         "operationId": "ReceiveController_getCredential",
         "parameters": [
           {
@@ -1377,9 +1412,52 @@
       }
     },
     "/wallets/{walletId}/receive/{state}": {
+      "delete": {
+        "description": "Delete state of a receive credential flow.\n",
+        "operationId": "ReceiveController_deleteOne",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "state",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteReceiveStateError"
+                },
+                "example": {
+                  "error": "delete_receive_state_error",
+                  "extra_info": {},
+                  "message": "Error occurred while deleting receive credential state."
+                }
+              }
+            }
+          }
+        },
+        "summary": "Delete receive credential state",
+        "tags": [
+          "Verifiable Credential Issuance"
+        ]
+      },
       "get": {
-        "description": "Get the current state of a receive credential flow.\n",
-        "operationId": "ReceiveController_findOne",
+        "description": "",
+        "operationId": "ReceiveController_getInfo",
         "parameters": [
           {
             "in": "path",
@@ -1407,7 +1485,7 @@
                 }
               }
             },
-            "description": ""
+            "description": "Credential receive state successfully loaded"
           },
           "404": {
             "content": {
@@ -1427,9 +1505,32 @@
               }
             },
             "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "internal_server_error": {
+                    "value": {
+                      "error": "internal_server_error",
+                      "extra_info": {},
+                      "message": "Internal server error."
+                    }
+                  }
+                },
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InternalServerError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
           }
         },
-        "summary": "Get receive credential state",
+        "summary": "Get credential receive state",
         "tags": [
           "Verifiable Credential Issuance"
         ]
@@ -1438,6 +1539,62 @@
     "/wallets/receive/callback": {
       "get": {
         "description": "`authorization_code` redirect uri that was started via `/receive` endpoint.<br/>\n`state` and `code` come as a query parameters.<br/>\n`code` is exchanged for the `access_token` so client can call `POST /wallets/{walletId}/receive/get_credential` endpoint right away.\n",
+        "parameters": [
+          {
+            "description": "Error code",
+            "in": "query",
+            "name": "error",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Error description",
+            "in": "query",
+            "name": "error_description",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Error URI",
+            "in": "query",
+            "name": "error_uri",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Authorization code",
+            "in": "query",
+            "name": "code",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Authorization state",
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Access token issuer",
+            "in": "query",
+            "name": "iss",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "operationId": "ReceiveController_callback",
         "responses": {
           "302": {
@@ -1788,6 +1945,16 @@
               }
             },
             "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidClaimsToDiscloseError"
+                }
+              }
+            },
+            "description": ""
           }
         },
         "summary": "Submit the presentation response to the verifier",
@@ -1797,6 +1964,122 @@
       }
     },
     "/wallets/{walletId}/send/{state}": {
+      "delete": {
+        "description": "Delete state of a presentation flow",
+        "operationId": "SendController_deleteOne",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "walletId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "state",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Presentation State by ID successfuly removed"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalid_path_param": {
+                    "value": {
+                      "error": "invalid_path_param",
+                      "extra_info": {},
+                      "message": "Invalid path parameter(s). Check \"extra_info.details\" for more details."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidPathParamError"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "authorization_request_not_found": {
+                    "value": {
+                      "error": "authorization_request_not_found",
+                      "extra_info": {},
+                      "message": "presentation state was not found."
+                    }
+                  },
+                  "wallet_not_found": {
+                    "value": {
+                      "error": "wallet_not_found",
+                      "extra_info": {},
+                      "message": "Wallet was not found."
+                    }
+                  }
+                },
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/WalletNotFoundError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AuthorizationRequestNotFoundError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "delete_presentation_state_error": {
+                    "value": {
+                      "error": "delete_presentation_state_error",
+                      "extra_info": {},
+                      "message": "Error occurred while deleting a presentation State."
+                    }
+                  },
+                  "internal_server_error": {
+                    "value": {
+                      "error": "internal_server_error",
+                      "extra_info": {},
+                      "message": "Internal server error."
+                    }
+                  }
+                },
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/DeletePresentationStateError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InternalServerError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Delete Verifiable Presentation State by ID",
+        "tags": [
+          "Verifiable Presentation"
+        ]
+      },
       "get": {
         "description": "",
         "operationId": "SendController_findOne",
@@ -1884,7 +2167,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CredentialResponseModelDto"
+                  "$ref": "#/components/schemas/CredentialResponseDto"
                 }
               }
             },
@@ -1963,50 +2246,47 @@
             }
           },
           {
-            "description": "Next credentials page cursor filter",
-            "in": "query",
-            "name": "next_page_after",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Credentials per page filter",
-            "in": "query",
-            "name": "per_page",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Credential order by their creation date filter",
-            "example": "asc",
-            "in": "query",
             "name": "order",
             "required": false,
+            "in": "query",
+            "description": "Issuance state response order. Default ordering: `DESC` (Supported: `ASC`, `DESC`)",
+            "example": "DESC",
             "schema": {
               "enum": [
-                "asc",
-                "desc"
+                "ASC",
+                "DESC"
               ],
               "type": "string"
             }
           },
           {
-            "description": "Filter credentials by their format",
-            "example": "vc+sd-jwt",
-            "in": "query",
-            "name": "format",
+            "name": "order_by",
             "required": false,
+            "in": "query",
+            "description": "Order Issuance state by an attribute, defaults to: `created_at` (Supported: `created_at`)",
+            "example": "created_at",
             "schema": {
               "enum": [
-                "vc+sd-jwt",
-                "jwt_vc_json"
+                "created_at"
               ],
               "type": "string"
             }
+          },
+          {
+            "name": "per_page",
+            "required": false,
+            "in": "query",
+            "description": "Number of records per page",
+            "example": 10,
+            "schema": {}
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Page number (starting from 1)",
+            "example": 1,
+            "schema": {}
           }
         ],
         "responses": {
@@ -2363,7 +2643,7 @@
         ]
       },
       "patch": {
-        "description": "Patches credential stored inside a Wallet.\n\nUsed to update `did` and `kid` fields in the meta data of the credential. Note that the `did` and `kid` need to reference an existing DID and Key Id.\n",
+        "description": "Patches credential stored inside a Wallet.\n\nUsed to update `did` and `kid` fields in the meta data of the credential. Note that the `did` and `kid` need to reference an existing DID and Key Id.\nThis is used to associate an (existing) Key and/or DID controlled by the wallet with the credential to make it easier to reference that Key and/or DID when presenting credentials for example.\n",
         "operationId": "CredentialsController_patch",
         "parameters": [
           {
@@ -2395,13 +2675,6 @@
         },
         "responses": {
           "204": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CredentialResponseDto"
-                }
-              }
-            },
             "description": "Wallet credential successfully patched"
           },
           "404": {
@@ -2429,6 +2702,13 @@
                       "message": "Key was not found."
                     }
                   },
+                  "did_kid_association_not_found": {
+                    "value": {
+                      "error": "did_kid_association_not_found",
+                      "extra_info": {},
+                      "message": "DID with associated Key was not found."
+                    }
+                  },
                   "wallet_not_found": {
                     "value": {
                       "error": "wallet_not_found",
@@ -2450,12 +2730,48 @@
                     },
                     {
                       "$ref": "#/components/schemas/DidNotFoundError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/DidKidAssociationNotFoundError"
                     }
                   ]
                 }
               }
             },
             "description": "Not found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "internal_server_error": {
+                    "value": {
+                      "error": "internal_server_error",
+                      "extra_info": {},
+                      "message": "Internal server error."
+                    }
+                  },
+                  "patch_credential_error": {
+                    "value": {
+                      "error": "patch_credential_error",
+                      "extra_info": {},
+                      "message": "Error occurred while patching a Wallet credential."
+                    }
+                  }
+                },
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/PatchCredentialError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InternalServerError"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
           }
         },
         "summary": "Patch credential by ID",
@@ -2657,19 +2973,20 @@
         "type": "object"
       },
       "ClaimObject": {
-        "additionalProperties": true,
-        "properties": {
-          "display": {
-            "items": {
-              "$ref": "#/components/schemas/DisplayClaimObject"
+        "type": "object",
+        "additionalProperties": {
+          "properties": {
+            "display": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/DisplayClaimObject"
+              }
             },
-            "type": "array"
-          },
-          "mandatory": {
-            "type": "boolean"
+            "mandatory": {
+              "type": "boolean"
+            }
           }
-        },
-        "type": "object"
+        }
       },
       "Component": {
         "properties": {
@@ -2689,6 +3006,25 @@
           "git_commit"
         ],
         "type": "object"
+      },
+      "CreateDidError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "create_did_error"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        }
       },
       "CreateWalletPayloadDto": {
         "properties": {
@@ -2963,6 +3299,10 @@
               }
             ]
           },
+          "client_id": {
+            "description": "Client identifier in OAuth 2.0",
+            "type": "string"
+          },
           "refresh_token": {
             "type": "string"
           },
@@ -3092,7 +3432,7 @@
       "CredentialReceiveStatesModelDto": {
         "type": "object",
         "properties": {
-          "issuance_states": {
+          "states": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CredentialReceiveStateModelDto"
@@ -3103,7 +3443,7 @@
           }
         },
         "required": [
-          "credentials",
+          "states",
           "meta"
         ]
       },
@@ -3126,9 +3466,35 @@
             "example": 86400,
             "type": "integer"
           },
-          "credential": {
-            "description": "Contains issued Credential. MUST be present when transaction_id is not returned. MAY be a string or an object, depending on the Credential format. See Appendix E for the Credential format specific encoding requirements.",
+          "client_id": {
+            "description": "Client identifier in OAuth 2.0",
             "type": "string"
+          },
+          "credential_id": {
+            "description": "Id under which the credential is stored in the wallet",
+            "example": "urn:uuid:4b5c8b6f-9b8a-4c8b-8b6f-9b8a4c8b6f9b",
+            "type": "string"
+          },
+          "credentials_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "Credential Ids that were issued using this receive state",
+              "example": "urn:uuid:4b5c8b6f-9b8a-4c8b-8b6f-9b8a4c8b6f9b"
+            }
+          },
+          "proof": {
+            "type": "object",
+            "properties": {
+              "proof_type": {
+                "type": "string",
+                "example": "jwt"
+              },
+              "jwt": {
+                "description": "Compact JWT of proof JWT used to issue the credential",
+                "type": "string"
+              }
+            }
           },
           "credential_definition": {
             "oneOf": [
@@ -3153,9 +3519,9 @@
               }
             ]
           },
-          "credential_id": {
-            "description": "Id under which the credential is stored in the wallet",
-            "example": "urn:uuid:4b5c8b6f-9b8a-4c8b-8b6f-9b8a4c8b6f9b",
+          "credential_endpoint": {
+            "description": "Credential Issuer credential endpoint called",
+            "example": "https://example.uri/credentials",
             "type": "string"
           },
           "credential_offer": {
@@ -3190,6 +3556,11 @@
           },
           "state": {
             "example": "e0d7bd1e-dce5-4366-989f-4647af68412a",
+            "type": "string"
+          },
+          "token_endpoint": {
+            "description": "Credential Issuer or Authorization Server token endpoint called",
+            "example": "https://example.uri/token",
             "type": "string"
           },
           "transaction_id": {
@@ -3252,8 +3623,12 @@
                 "type": "string"
               },
               "display": {
-                "$ref": "#/components/schemas/DisplayObject",
+                "$ref": "#/components/schemas/CredentialDisplayObject",
                 "description": "Array of objects, where each object contains information on how to display the credential.\n\nSnapshot from Credential Issuer Metadata taken at the time of issuance.\nSee section 11.2.3 in OpenID for Verifiable Credential Issuance for more information.\n"
+              },
+              "issuer_display": {
+                "$ref": "#/components/schemas/IssuerDisplayObject",
+                "description": "Array of objects, where each object contains issuers name for a different locale.\n\nSnapshot from Credential Issuer Metadata taken at the time of issuance.\nSee section 11.2.3 in OpenID for Verifiable Credential Issuance for more information.\n"
               },
               "kid": {
                 "description": "An ID for a key managed by the wallet used to perform credential key binding.",
@@ -3297,24 +3672,33 @@
       "CredentialVerificationResponseDto": {
         "properties": {
           "checks": {
-            "enum": [
-              "format",
-              "signature",
-              "expiration",
-              "nonce",
-              "schema",
-              "revocation_status"
-            ],
-            "type": "string"
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "format",
+                "signature",
+                "expiration",
+                "nonce",
+                "schema",
+                "revocation_status"
+              ]
+            }
           },
           "errors": {
-            "$ref": "#/components/schemas/CredentialVerificationCheckModelDto"
+            "items": {
+              "$ref": "#/components/schemas/CredentialVerificationCheckModelDto"
+            },
+            "type": "array"
           },
           "id": {
             "type": "string"
           },
           "warnings": {
-            "$ref": "#/components/schemas/CredentialVerificationCheckModelDto"
+            "items": {
+              "$ref": "#/components/schemas/CredentialVerificationCheckModelDto"
+            },
+            "type": "array"
           }
         },
         "required": [
@@ -3334,20 +3718,16 @@
             "type": "array"
           },
           "meta": {
-            "default": {},
+            "$ref": "#/components/schemas/Meta",
             "example": {
               "order": "asc",
               "per_page": 20
             },
             "type": "object"
-          },
-          "next_page_after": {
-            "type": "string"
           }
         },
         "required": [
           "credentials",
-          "next_page_after",
           "meta"
         ],
         "type": "object"
@@ -3400,12 +3780,56 @@
         ],
         "type": "object"
       },
+      "DeleteDidError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "delete_did_error"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        }
+      },
       "DeleteWalletError": {
         "properties": {
           "error": {
             "description": "Unique error identifier",
             "enum": [
               "delete_wallet_error"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "DidKidAssociationNotFoundError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "did_not_found"
             ],
             "type": "string"
           },
@@ -3462,35 +3886,53 @@
         },
         "type": "object"
       },
-      "DisplayObject": {
-        "properties": {
-          "background_color": {
-            "type": "string"
-          },
-          "locale": {
-            "pattern": "^[a-zA-Z]{2,3}(-[a-zA-Z]{2})?(-[a-zA-Z]{2,3})?$",
-            "type": "string"
-          },
-          "logo": {
-            "properties": {
-              "alt_text": {
-                "type": "string"
-              },
-              "url": {
-                "format": "uri",
-                "type": "string"
-              }
+      "IssuerDisplayObject": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "locale": {
+              "pattern": "^[a-zA-Z]{2,3}(-[a-zA-Z]{2})?(-[a-zA-Z]{2,3})?$",
+              "type": "string"
             },
-            "type": "object"
-          },
-          "name": {
-            "type": "string"
-          },
-          "text_color": {
-            "type": "string"
+            "name": {
+              "type": "string"
+            }
           }
-        },
-        "type": "object"
+        }
+      },
+      "CredentialDisplayObject": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "locale": {
+              "pattern": "^[a-zA-Z]{2,3}(-[a-zA-Z]{2})?(-[a-zA-Z]{2,3})?$",
+              "type": "string"
+            },
+            "background_color": {
+              "type": "string"
+            },
+            "text_color": {
+              "type": "string"
+            },
+            "logo": {
+              "properties": {
+                "alt_text": {
+                  "type": "string"
+                },
+                "url": {
+                  "format": "uri",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          }
+        }
       },
       "GrantDto": {
         "properties": {
@@ -3637,6 +4079,25 @@
           "extra_info"
         ],
         "type": "object"
+      },
+      "InvalidClaimsToDiscloseError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "invalid_claims_to_disclose_error"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        }
       },
       "InvalidCredentialDataError": {
         "properties": {
@@ -3887,6 +4348,9 @@
       },
       "JSONWebKeyPub": {
         "properties": {
+          "alg": {
+            "type": "string"
+          },
           "crv": {
             "type": "string"
           },
@@ -4064,6 +4528,56 @@
         ],
         "type": "object"
       },
+      "NotImplementedError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "not_implemented"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "PatchCredentialError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "patch_credential_error"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
       "PresentationDefinition": {
         "properties": {
           "id": {
@@ -4122,7 +4636,7 @@
           }
         },
         "required": [
-          "credentials",
+          "presentation_states",
           "meta"
         ]
       },
@@ -4235,6 +4749,7 @@
           "response_mode": {
             "description": "Parameter to ask the Wallet to send the response to the verifier. Possible values are 'direct_post'",
             "enum": [
+              "post",
               "direct_post"
             ],
             "type": "string"
@@ -4242,6 +4757,7 @@
           "response_type": {
             "description": "Response type of the request. Possible values are `vp_token`, `id_token`",
             "enum": [
+              "id_token",
               "vp_token",
               "vp_token id_token"
             ],
@@ -4482,6 +4998,29 @@
         },
         "type": "object"
       },
+      "Redis": {
+        "properties": {
+          "host": {
+            "type": "string"
+          },
+          "port": {
+            "type": "string"
+          },
+          "db": {
+            "type": "string"
+          },
+          "tlsEnabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "host",
+          "port",
+          "db",
+          "tlsEnabled"
+        ],
+        "type": "object"
+      },
       "RegisterWalletError": {
         "properties": {
           "error": {
@@ -4518,6 +5057,9 @@
           "database": {
             "$ref": "#/components/schemas/Database"
           },
+          "redis": {
+            "$ref": "#/components/schemas/Redis"
+          },
           "healthCheck": {
             "$ref": "#/components/schemas/HealthCheck"
           }
@@ -4526,6 +5068,7 @@
           "app",
           "appsignal",
           "database",
+          "redis",
           "healthCheck"
         ],
         "type": "object"
@@ -4557,6 +5100,31 @@
               "from"
             ]
           }
+        ],
+        "type": "object"
+      },
+      "SvxDidCannotBeDeletedError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "svx_authentication_did_cannot_be_deleted"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
         ],
         "type": "object"
       },
@@ -4705,6 +5273,81 @@
           "external_reference",
           "keys",
           "dids"
+        ],
+        "type": "object"
+      },
+      "AuthorizationRequestNotFoundError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "authorization_request_not_found"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "DeleteReceiveStateError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "delete_presentation_state_error"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
+        ],
+        "type": "object"
+      },
+      "DeletePresentationStateError": {
+        "properties": {
+          "error": {
+            "description": "Unique error identifier",
+            "enum": [
+              "delete_presentation_state_error"
+            ],
+            "type": "string"
+          },
+          "extra_info": {
+            "description": "Object that may contain more information about the error",
+            "type": "object"
+          },
+          "message": {
+            "description": "User friendly error message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "message",
+          "extra_info"
         ],
         "type": "object"
       },
