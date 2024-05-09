@@ -1,6 +1,6 @@
 <h1 align="center"> MeecoHolderWalletApiSdk </h1>
 
-Provides a Swift-friendly API into the API for [Meeco Holder API](https://holder-wallet-dev.svx.internal/api).
+Provides a Swift-friendly API into the API for Meeco Holder Wallet API
 
 ## Introduction
 
@@ -140,18 +140,18 @@ To integrate **MeecoHolderWalletApiSdk** into your project using SPM, specify it
   import PackageDescription
 
   let package = Package(
-      name: "GreetingServiceClient",
+      name: "MyAppClient",
           platforms: [
           .macOS(.v10_15), // Specify minimum platform version here
       ],
       dependencies: [
-              .package(url: "https://bitbucket.org/meeco/meeco-holder-wallet-api-sdk-swift", from: "0.0.1-beta.1"),
+              .package(url: "https://github.com/Meeco/holder-wallet-api-sdk-swift", from: "0.0.1-beta.1"),
           ],
       targets: [
           // Targets are the basic building blocks of a package, defining a module or a test suite.
           // Targets can depend on other targets in this package and products from dependencies.
           .executableTarget(
-              name: "GreetingServiceClient",
+              name: "MyAppExecutable",
               dependencies: [
                           .product(name: "MeecoHolderWalletApiSdk", package: "meeco-holder-wallet-api-sdk-swift")
                       ]
@@ -163,28 +163,29 @@ To integrate **MeecoHolderWalletApiSdk** into your project using SPM, specify it
 If this is for an Xcode project simply import the repo at:
 
 ```
-https://bitbucket.org/meeco/meeco-holder-wallet-api-sdk-swift
+https://github.com/Meeco/holder-wallet-api-sdk-swift
 ```
 
-## Usage
+## Example Usage
 
 ```swift
-  import Foundation
-  import OpenAPIURLSession
-  import MeecoHolderWalletApiSdk
+import Foundation
+import OpenAPIURLSession
+import MeecoHolderWalletApiSdk
 
-  let client = Client(
-      serverURL: try Foundation.URL(
-          validatingOpenAPIServerURL: "http://holder-wallet-dev.svx.internal"
-      ),
-      transport: URLSessionTransport()
-  )
+do {
+    let client = Client(
+        serverURL: try Foundation.URL(
+            validatingOpenAPIServerURL: "https://api.holderwallet.com"
+        ),
+        transport: URLSessionTransport()
+    )
 
-
-  let response = try await client.AppController_getVersion()
-  print(try response.ok.body.json)
-
-```
+    let response = try await client.AppController_getVersion()
+    print(try response.ok.body.json)
+} catch {
+    print("An error occurred: \(error)")
+}
 
 ## Documentation
 
@@ -192,10 +193,11 @@ _Coming Soon!_
 
 ## Roadmap
 
-## 1.0.0
+_Coming Soon!_
 
 - [ ] Coming Soon
 
 ## License
 
 This code is distributed under the MIT license. See the [LICENSE](LICENSE) file for more info.
+```
