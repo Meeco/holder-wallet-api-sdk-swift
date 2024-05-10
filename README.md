@@ -8,7 +8,7 @@ All cryptographic keys are managed by the service (often referred to as custodia
 
 The service facilitates receiving and presenting credentials in accordance with leading standards and specifications in the space. The focus is on the family of OpenID4VC standards, JWT based credential formats and (optionally) DIDs.
 
-One instance of the service can manage multiple wallets, each of which is a collection of keys, DIDs and associated credentials. This service operates in a trusted environment where its client applications are expected to be trusted as well.
+One instance of the service can manage multiple wallets, each of which is a collection of keys, DIDs and associated credentials. 
 
 ## Wallet Management
 
